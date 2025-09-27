@@ -65,7 +65,7 @@ NFR3 & Non-Functional & Data storage must be distributed and optimized for big d
 NFR4 & Non-Functional & Customized reports must be generated in under 10 seconds. & US5 \\ 
 \hline
 
-NFR5 & Non-Functional & The recommendation engine must update in real time as air quality data changes. & US8, US10 \\ 
+NFR5 & Non-Functional & The recommendation engine should be updated every 10 minutes throughout the day with air quality data. & US8, US10 \\ 
 \hline
 
 NFR6 & Non-Functional & Air quality data and visualizations must load in less than 2 seconds for 95\% of user requests. & US12 \\ 
@@ -86,7 +86,14 @@ NFR10 & Non-Functional & Data consistency and user personalization must be prese
 \caption{Requirements}
 \end{longtable}
 
+\subsubsection*{Non-Functional Requirements Justification}
 
-\noindent\textbf{Corrections} Requirements that appeared to be a derived necessity or system behavior rather than a direct requirement have been modified. We have not found a way to calculate the values, so we are considering the needs and waiting times that we as users would consider feasible.
+\textbf{NFR2 (24/7 streaming ingestion):} Air quality monitoring requires continuous data collection since pollution levels fluctuate throughout the day and immediate detection of hazardous conditions is critical for public health.
+
+\textbf{NFR4 (10 seconds report generation):} Complex reports with multiple filters and large datasets require processing time, but 10 seconds maintains user engagement while allowing for comprehensive data analysis.
+
+\textbf{NFR5 (10 minutes update frequency):} Air quality APIs from external sources typically update their information every 10 minutes to 1 hour, making more frequent updates unnecessary and resource-intensive.
+
+\textbf{NFR6 (2 seconds data loading):} Critical safety information like air quality alerts must be delivered quickly to enable timely user decisions about outdoor activities and health precautions.
 
 \newpage
