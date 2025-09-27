@@ -1,0 +1,42 @@
+\section{Query Proposals}
+This section describes the purpose of each example SQL query proposed in the architecture, linking them to the functional and performance requirements of the system. Only SQL is used, as the only tool that explicitly allows queries by code is Postgres.
+\subsection*{1. Latest Air Quality Index (AQI) per City}
+\begin{listing}[H]
+\caption{Query Latest Air Quality}
+\label{code:query1}
+\inputminted[linenos]{sql}{Codigos/query_1.tex}
+\end{listing}
+
+\textbf{Purpose:}  
+This query retrieves the most recent AQI readings for all pollutants measured in Bogotá. It supports real-time display of air quality cards on the dashboard and fulfills user stories requiring fast access to current conditions (e.g., US1, US4, US9).
+
+\textbf{Output:}  
+Returns pollutant type, AQI value, and timestamp of the latest measurement for the given city, using a materialized view for high performance.
+
+\subsection*{2. Monthly Historical Averages by Pollutant}
+\begin{listing}[H]
+\caption{Query Monthly Historical}
+\label{code:query1}
+\inputminted[linenos]{sql}{Codigos/query_2.tex}
+\end{listing}
+
+\textbf{Purpose:}  
+This query supports longitudinal trend analysis by computing average air quality values per month for a specific pollutant. It enables researchers and public policy analysts to track pollution evolution over time (e.g., US2, US5, US7).
+
+\textbf{Output:}  
+Returns a time series of average pollutant concentrations or AQI values by month for the last three years.
+
+\subsection*{3. Raw JSON Payloads for Debugging}
+\begin{listing}[H]
+\caption{Query Raw JSON}
+\label{code:query1}
+\inputminted[linenos]{sql}{Codigos/query_3.tex}
+\end{listing}
+
+\textbf{Purpose:}  
+This query provides access to raw API responses stored in JSON format for traceability and debugging. It supports administrators in verifying the integrity of ingested data and handling ingestion failures (e.g., US1, US13).
+
+\textbf{Output:}  
+Returns the original JSON payloads from the Google API that were collected in the last hour, helping verify field mappings and ingestion consistency.
+
+\newpage

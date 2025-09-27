@@ -1,0 +1,5 @@
+SELECT month, avg_value
+FROM monthly_avg_city_pollutant
+WHERE city='Medellin' AND pollutant_id = (SELECT id FROM pollutant 
+                                            WHERE name='PM2.5')
+ORDER BY month DESC LIMIT 36;

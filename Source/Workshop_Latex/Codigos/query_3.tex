@@ -1,0 +1,5 @@
+SELECT payload
+FROM rawjson
+WHERE source_id = (SELECT id FROM apisource WHERE name='google')
+  AND collected_at > now() - interval '1 hour'
+LIMIT 10;

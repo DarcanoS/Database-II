@@ -1,0 +1,102 @@
+\documentclass[12pt]{article}
+
+% ----------------- PACKAGES -----------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{textcomp}
+\usepackage{newunicodechar}
+\newunicodechar{≥}{$\geq$}
+
+\usepackage[style=apa, backend=biber]{biblatex} 
+\usepackage{csquotes} 
+\usepackage{url} 
+
+\addbibresource{references.bib}
+
+\usepackage{graphicx}
+\usepackage{amsmath, amssymb}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tabularx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{fancyvrb}
+\usepackage{titling}
+\usepackage{lmodern}
+\usepackage{caption}
+\usepackage{minted}
+\usepackage{array}
+
+\floatstyle{ruled}
+\newfloat{listing}{htbp}{lop}
+\floatname{listing}{Code}
+
+\captionsetup[table]{skip=10pt}
+
+% ----------------- HEADER/FOOTER -----------------
+\setlength{\headheight}{14.5pt}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{Databases II}
+\rhead{Workshop 2}
+\cfoot{\thepage}
+
+% ----------------- DOCUMENT -----------------
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{1cm}
+    
+    \Huge
+    \textbf{Workshop 3 - Project}\\[0.5cm]
+    
+    \LARGE
+    \textbf{Air Quality Analysis Platform}\\[2cm]
+    
+    \Large
+    \textbf{Members:}\\[0.5cm]
+    Jose Alejando Cortazar – Cod.: 20181020022\\
+    Stivel Pinilla Puerta – Cod.: 20191020024\\
+    Johan Castaño Martinez – Cod.: 20191020029\\[2cm]
+    
+    \textbf{Professor:}\\[0.5cm]
+    Carlos Andrés Sierra\\[2cm]
+    
+    \textbf{Universidad Distrital Francisco José de Caldas}\\
+    School of Engineering\\
+    Computer Engineering Program\\
+    Databases II\\[2cm]
+    
+    June 2025, Bogotá D.C.
+\end{titlepage}
+
+\newpage
+% ----------------- BEGIN DOCUMENT -----------------
+
+\tableofcontents
+\newpage
+
+\input{Secciones/01_Introduccion}
+% ----------------- SECTIONS WORKSHOP 1 -----------------
+\input{Secciones/Workshop_1/01_Business_Model}
+\input{Secciones/Workshop_1/02_Requirements}
+\input{Secciones/Workshop_1/03_User_Story}
+\input{Secciones/Workshop_1/04_Diagram_ER}
+% ----------------- SECTIONS WORKSHOP 2 -----------------
+% \input{Secciones/Workshop_2/01_Architecture}
+% \input{Secciones/Workshop_2/02_InformationRequirements}
+% \input{Secciones/Workshop_2/03_Queries}
+% ----------------- SECTIONS WORKSHOP 3 -----------------
+% \input{Secciones/Workshop_3/01_ ConcurrencyAnalysis}
+% \input{Secciones/Workshop_3/02_ParallelandDistributedDatabaseDesign}
+% \input{Secciones/Workshop_3/03_PerformanceImprovementStrategies}
+
+\input{Secciones/References}
+
+\end{document}

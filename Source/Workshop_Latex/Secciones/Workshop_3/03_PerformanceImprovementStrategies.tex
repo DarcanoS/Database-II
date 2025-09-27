@@ -1,0 +1,114 @@
+\section{Strategies to Improve System Performance}
+
+\subsection{Data Partitioning (Temporal and Geographic)}
+
+\textbf{Description:}
+
+The \texttt{airquality\_reading} table, which stores millions of records from various stations and cities, is divided into \textbf{temporal partitions} (e.g., one per month) and \textbf{geographic partitions} (by country or city). For example:
+
+\begin{itemize}
+  \item The ``Bogot\'a-Centro'' station stores its data in the partition  \\
+  \texttt{airquality\_reading\_bogota\_2025\_06}.
+  \item The ``Medell\'in-Sur'' station stores its data in \texttt{airquality\_reading\_medellin\_2025\_06}.
+  \item On the backend, records are automatically routed based on \texttt{city} and \texttt{created\_at}.
+\end{itemize}
+
+\textbf{Concrete example:}
+
+\begin{verbatim}
+CREATE TABLE airquality_reading_bogota_2025_06 PARTITION OF airquality_reading
+  FOR VALUES FROM ('2025-06-01') TO ('2025-07-01')
+  WHERE city = 'Bogotá';
+\end{verbatim}
+
+\textbf{Specific advantages:}
+\begin{itemize}
+  \item Dashboard queries filtered by ``Bogotá - June 2025'' scan only one or two partitions $\rightarrow$ faster responses.
+  \item Data cleanup (e.g., data older than 2 years) is simplified by archiving or dropping complete partitions.
+\end{itemize}
+
+\textbf{Trade-offs / Challenges:}
+\begin{itemize}
+  \item As the system grows, you could have \textbf{over 1000 active partitions} without proper archiving.
+  \item Queries lacking proper filters (e.g., no \texttt{city} or \texttt{created\_at}) may result in full scans $\rightarrow$ performance issues.
+  \item Real-time \textbf{data routing} must be carefully implemented to insert data into the correct partition by region and date.
+\end{itemize}
+
+\subsection{Replication and Read Separation}
+
+\textbf{Description:}
+
+Your system has three main user profiles: \textbf{citizens}, \textbf{researchers}, and \textbf{public entities}. All of them access dashboards and reports, generating heavy read traffic on historical data.
+
+To avoid these reads from affecting incoming data writes, it's recommended to deploy \textbf{read-only replicas} dedicated exclusively to:
+
+\begin{itemize}
+  \item Citizen dashboards.
+  \item Reports generated via the web interface.
+  \item Visualizations in mobile apps.
+\end{itemize}
+
+\textbf{Concrete example in your system:}
+
+\begin{itemize}
+  \item The primary node receives new data every 10 minutes from the APIs.
+  \item Synchronized replicas serve dashboard or analytics queries with a short delay (e.g., 5 seconds).
+  \item In case of failure, replicas can automatically take over.
+\end{itemize}
+
+\textbf{Specific advantages:}
+\begin{itemize}
+  \item Citizens accessing from different cities simultaneously won't affect ingestion or backend processing.
+  \item Improves performance during peak traffic (e.g., pollution alerts or environmental events).
+  \item Scalable: you can deploy region-specific replicas (e.g., one in Bogotá, another in Medellín).
+\end{itemize}
+
+\textbf{Trade-offs / Challenges:}
+\begin{itemize}
+  \item Replication is not instantaneous: dashboards may display \textbf{slightly delayed data (lag)}.
+  \item Requires monitoring tools to detect \textbf{outdated or failed replicas}.
+  \item It does not reduce write latency or solve write conflicts (e.g., simultaneous updates from multiple APIs).
+\end{itemize}
+
+\subsection{Asynchronous Ingestion with Message Queues}
+
+\textbf{Description:}
+
+Your system ingests air quality data from \textbf{multiple sources (AQICN, IQAir, Google, local stations)} every 10 minutes. If handled synchronously, an error in one source can disrupt the entire ingestion process. To prevent this, you can use a message queue system (like Kafka or RabbitMQ) to decouple \textbf{data capture}, \textbf{processing}, and \textbf{storage}.
+
+\textbf{Concrete example in your system:}
+\begin{itemize}
+  \item Each API has a "producer" that sends data into a queue.
+  \item Multiple parallel "consumers" validate, normalize, deduplicate, and store the data.
+  \item If Google's API fails, only that producer is affected — the system continues running.
+\end{itemize}
+
+\textbf{Specific advantages:}
+\begin{itemize}
+  \item Scales automatically: if you add 20 new stations in Cali, just spin up more consumers.
+  \item If an API sends corrupted data, you can isolate and pause only that stream.
+  \item The pipeline is resilient: if a validation service fails, messages can be retried later.
+\end{itemize}
+
+\textbf{Trade-offs / Challenges:}
+\begin{itemize}
+  \item Introduces \textbf{additional latency}: data may take 30--60 seconds to reach the dashboard.
+  \item Requires logic to handle \textbf{duplicate or out-of-order messages} (e.g., same record sent twice by AQICN).
+  \item Increases infrastructure and monitoring complexity (e.g., tracking message consumption status).
+\end{itemize}
+
+\subsection*{Comparative Summary}
+
+\begin{center}
+\begin{tabular}{|p{5.5cm}|p{5cm}|p{5.5cm}|}
+\hline
+\textbf{Strategy} & \textbf{Key Benefit} & \textbf{Main Challenge} \\
+\hline
+Temporal and geographic partitioning & Fast, efficient queries by city and time & Complex partition management at scale \\
+\hline
+Read replicas & Better performance for dashboards and reports & Slight data lag and synchronization complexity \\
+\hline
+Asynchronous ingestion with queues & Scalability, resilience, and decoupling & Added latency and handling of duplicates/errors \\
+\hline
+\end{tabular}
+\end{center}

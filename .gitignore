@@ -1,0 +1,363 @@
+# LaTeX auxiliary files
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+*.lb
+*.dvi
+*.xdv
+*.bbl
+*.bcf
+*.blg
+*.run.xml
+
+# LaTeX intermediate files
+*.fdb_latexmk
+*.fls
+*.figlist
+*.makefile
+*.auxlock
+
+# BibTeX files
+*.bak
+*.brf
+
+# Build tool auxiliary files
+*.nlg
+*.nlo
+*.nls
+*.ilg
+*.ind
+*.idx
+*.lol
+
+# LaTeX Beamer
+*.nav
+*.snm
+*.vrb
+
+# LaTeX glossaries
+*.acn
+*.acr
+*.glg
+*.glo
+*.gls
+*.glsdefs
+*.lzo
+*.lzs
+
+# LaTeX hyperref
+*.brf
+
+# LaTeX knitr
+*-concordance.tex
+# TODO comment the next line if you want to keep your tikz graphics files
+*.tikz
+*-tikzDictionary
+
+# LaTeX nomencl
+*.nlg
+*.nlo
+*.nls
+
+# LaTeX pax
+*.pax
+
+# LaTeX latexindent backup files
+*.bak[0-9]
+*.bak[0-9][0-9]
+
+# LaTeX sagetex
+*.sagetex.sage
+*.sagetex.py
+*.sagetex.scmd
+
+# LaTeX scrwfile
+*.wrt
+
+# LaTeX sympy
+*.upa
+*.upb
+
+# LaTeX pythontex
+*.pytxcode
+pythontex-files-*/
+
+# LaTeX thmtools
+*.thm
+
+# LaTeX TikZ & PGF
+*.auxlock
+
+# LaTeX todonotes
+*.tdo
+
+# LaTeX xindy
+*.xdy
+
+# LaTeX xmpincl
+*.xmpi
+
+# LaTeX enumitem
+*.upa
+*.upb
+
+# LaTeX gnuplottex
+*-gnuplottex-*
+
+# LaTeX glossaries
+*.glg
+*.glo
+*.gls
+*.glsdefs
+*.ist
+*.acn
+*.acr
+*.alg
+
+# LaTeX hyperref
+*.out
+
+# LaTeX minitoc
+*.maf
+*.mlf
+*.mlt
+*.mtc[0-9]*
+*.slf[0-9]*
+*.slt[0-9]*
+*.stc[0-9]*
+
+# LaTeX minted
+_minted-*/
+*.pyg
+
+# LaTeX morewrites
+*.mw
+
+# LaTeX nomencl
+*.nlg
+*.nlo
+*.nls
+
+# LaTeX pax
+*.pax
+
+# LaTeX pdfpcnotes
+*.pdfpc
+
+# LaTeX sagetex
+*.sagetex.sage
+*.sagetex.py
+*.sagetex.scmd
+
+# LaTeX scrwfile
+*.wrt
+
+# LaTeX sympy
+*.upa
+*.upb
+
+# LaTeX synthax
+*.synctex
+*.synctex(busy)
+*.synctex.gz
+*.synctex.gz(busy)
+
+# LaTeX thmtools
+*.thm
+
+# LaTeX tikz & pgf
+*.auxlock
+*.figlist
+*.makefile
+
+# LaTeX todonotes
+*.tdo
+
+# LaTeX xindy
+*.xdy
+
+# LaTeX xmpincl
+*.xmpi
+
+# LaTeX biber
+*.bbl
+*.bcf
+*.blg
+*.run.xml
+
+# LaTeX algorithms
+*.alg
+*.loa
+
+# LaTeX achemso
+acs-*.bib
+
+# LaTeX amsthm
+*.thm
+
+# LaTeX beamer
+*.nav
+*.pre
+*.snm
+*.vrb
+
+# LaTeX changes
+*.soc
+
+# LaTeX comment
+*.cut
+
+# LaTeX cprotect
+*.cpt
+
+# LaTeX elsarticle (documentclass of Elsevier journals)
+*.spl
+
+# LaTeX endnotes
+*.ent
+
+# LaTeX fixme
+*.lox
+
+# LaTeX floatflt
+*.fff
+*.ttt
+
+# LaTeX framed/mdframed
+*.mdf
+
+# LaTeX gnuplottex
+*-gnuplottex-*
+
+# LaTeX gregoriotex
+*.gaux
+*.gtex
+
+# LaTeX htlatex
+*.4ct
+*.4tc
+*.idv
+*.lg
+*.trc
+*.xref
+
+# LaTeX hyperref
+*.brf
+
+# LaTeX knitr
+*-concordance.tex
+# TODO comment the next line if you want to keep your tikz graphics files
+*.tikz
+*-tikzDictionary
+
+# LaTeX listings
+*.lol
+
+# LaTeX makeidx
+*.idx
+*.ilg
+*.ind
+
+# LaTeX minitoc
+*.maf
+*.mlf
+*.mlt
+*.mtc[0-9]*
+*.slf[0-9]*
+*.slt[0-9]*
+*.stc[0-9]*
+
+# LaTeX minted
+_minted-*/
+*.pyg
+
+# LaTeX morewrites
+*.mw
+
+# LaTeX nomencl
+*.nlg
+*.nlo
+*.nls
+
+# LaTeX pax
+*.pax
+
+# LaTeX pdfpages
+*.pdfpc
+
+# LaTeX pythontex
+*.pytxcode
+pythontex-files-*/
+
+# LaTeX tcolorbox
+*.listing
+
+# LaTeX thmtools
+*.thm
+
+# LaTeX TikZ & PGF
+*.auxlock
+*.fdb_latexmk
+*.fls
+*.figlist
+*.makefile
+
+# LaTeX todonotes
+*.tdo
+
+# LaTeX vhistory
+*.hst
+*.ver
+
+# LaTeX xcolor
+*.xcp
+
+# LaTeX xindy
+*.xdy
+
+# LaTeX xmpincl
+*.xmpi
+
+# LaTeX xr
+*.auxlock
+
+# PDF files (uncomment if you don't want to track PDFs)
+main.pdf
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor files
+*~
+*.swp
+*.swo
+*#
+.#*
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# Cache directories
+.cache/

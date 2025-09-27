@@ -1,0 +1,92 @@
+\section{Requirements}
+
+\begin{longtable}{|p{2cm}|p{2cm}|p{8cm}|p{3cm}|}
+\hline
+\textbf{ID} & \textbf{Type} & \textbf{Requirement} & \textbf{Associated User Stories} \\
+\hline
+\endfirsthead
+
+\hline
+\textbf{ID} & \textbf{Type} & \textbf{Requirement} & \textbf{Associated User Stories} \\
+\hline
+\endhead
+
+FR1 & Functional & The system must collect real-time air quality data from multiple external sources (e.g., APIs, stations) and store it for further processing. & US1, US13, US14 \\ 
+\hline
+
+FR2 & Functional & The system must allow users to query and visualize historical air quality data filtered by date, location, and pollutant type. & US2, US7 \\ 
+\hline
+
+FR3 & Functional & The system must display air quality information in a uniform and clear manner. The origin of the data is irrelevant. & US1, US3 \\ 
+\hline
+
+FR4 & Functional & The system must display real-time dashboards with key performance indicators (KPIs) on air quality. & US4 \\ 
+\hline
+
+FR5 & Functional & The system must generate customized reports with filters for date, location, and indicators, available for download or email. & US5 \\ 
+\hline
+
+FR6 & Functional & The system must present interactive graphs showing air quality evolution over time. & US6 \\ 
+\hline
+
+FR7 & Functional & The system must allow users to export historical data in standard formats like CSV and JSON. & US7 \\ 
+\hline
+
+FR8 & Functional & The system must provide personalized recommendations based on user location and air quality conditions. & US8 \\ 
+\hline
+
+FR9 & Functional & The system must send customizable air quality alerts when thresholds are exceeded. & US9 \\ 
+\hline
+
+FR10 & Functional & The system must suggest certified protective products during high pollution periods. & US10 \\ 
+\hline
+
+FR11 & Functional & The system must display maps highlighting areas with better air quality for navigation. & US11 \\ 
+\hline
+
+FR12 & Functional & The system must support geographic search for air quality data by country, city, or region. & US15 \\ 
+\hline
+
+FR13 & Functional & The system must be responsive and compatible with mobile, tablet, and desktop devices. & US16 \\ 
+\hline
+
+FR14 & Functional & The system must allow users to share air quality data and reports on social media with pre-generated links and previews. & US17 \\ 
+\hline
+
+NFR1 & Non-Functional & Queries on large datasets (≥1 million records) must execute in under 2 seconds 95\% of the time. & US3, US12 \\ 
+\hline
+
+NFR2 & Non-Functional & The system must support continuous streaming data ingestion 24/7 without manual intervention. & US1, US14 \\ 
+\hline
+
+NFR3 & Non-Functional & Data storage must be distributed and optimized for big data processing. & US1, US3 \\ 
+\hline
+
+NFR4 & Non-Functional & Customized reports must be generated in under 10 seconds. & US5 \\ 
+\hline
+
+NFR5 & Non-Functional & The recommendation engine must update in real time as air quality data changes. & US8, US10 \\ 
+\hline
+
+NFR6 & Non-Functional & Air quality data and visualizations must load in less than 2 seconds for 95\% of user requests. & US12 \\ 
+\hline
+
+NFR7 & Non-Functional & The system architecture must include fault tolerance and geographic redundancy. & US14 \\ 
+\hline
+
+NFR8 & Non-Functional & The system must scale horizontally to support growth in data volume and users. & US13, US14 \\ 
+\hline
+
+NFR9 & Non-Functional & The system UI must function correctly on all major browsers and operating systems without errors. & US16 \\ 
+\hline
+
+NFR10 & Non-Functional & Data consistency and user personalization must be preserved across all user devices. & US16 \\ 
+\hline
+
+\caption{Requirements}
+\end{longtable}
+
+
+\noindent\textbf{Corrections} Requirements that appeared to be a derived necessity or system behavior rather than a direct requirement have been modified. We have not found a way to calculate the values, so we are considering the needs and waiting times that we as users would consider feasible.
+
+\newpage

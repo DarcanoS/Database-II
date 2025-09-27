@@ -1,0 +1,75 @@
+\section{Concurrency Analysis}
+
+\subsection{Scenarios of Concurrency in the Air Quality Platform}
+
+In a multi-user, real-time data platform like ours, several components operate simultaneously and interact with shared data resources. The following table outlines key scenarios where concurrency issues may arise:
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|X|X|X|}
+\hline
+\textbf{Scenario} & \textbf{Description} & \textbf{Concurrency Risk} \\
+\hline
+Data ingestion every 10 minutes from multiple APIs & The Ingestor service retrieves data from AQICN, Google, IQAir, and others in parallel, storing results in the \texttt{airquality\_reading} table. & Simultaneous writes to the same table could lead to duplicated records, inconsistent values, or race conditions during normalization. \\
+\hline
+Simultaneous report generation by users & Researchers, citizens, and public officials may generate historical or personalized reports at the same time. & Heavy concurrent reads on the same materialized views may increase query latency, or return incomplete data if a refresh is in progress. \\
+\hline
+Alert customization by the same user on multiple devices & A user might modify alert preferences via mobile and desktop at the same time. & Conflicting updates to \texttt{alert} or \texttt{dashboard\_config} tables can result in lost updates, where the last write overwrites the first. \\
+\hline
+Concurrent access to real-time dashboards & Multiple users request dashboards with updated AQI indicators, which rely on materialized views and partitioned tables. & Reads may occur during materialized view refresh, causing temporary inconsistencies or slow responses. \\
+\hline
+\end{tabularx}
+\caption{Scenarios of Concurrency in the Platform}
+\end{table}
+
+\subsection{Potential Problems and Concrete Examples}
+
+\begin{itemize}
+    \item \textbf{Lost Update:} Two administrators modify a user's alert thresholds for PM2.5 simultaneously. Since there's no mechanism to detect concurrent changes, one update silently overwrites the other.
+    
+    \item \textbf{Dirty Read:} A researcher queries monthly averages while the materialized view is being refreshed. The result may mix old and new data, leading to incorrect analysis.
+    
+    \item \textbf{Non-repeatable Read / Phantom Read:} During dashboard loading, new air quality records are ingested. The initial count of pollutants differs from the second access within the same request scope.
+    
+    \item \textbf{Deadlock:} The Ingestor updates both \texttt{station} metadata and \texttt{airquality\_reading} values, while the recommendation engine attempts to read and update user alerts simultaneously. A cyclic dependency could arise, locking resources indefinitely.
+\end{itemize}
+
+\subsection{Proposed Control Mechanisms}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|X|X|X|}
+\hline
+\textbf{Problem} & \textbf{Proposed Solution} & \textbf{Justification} \\
+\hline
+Inconsistent reads on materialized views & Use \texttt{REFRESH MATERIALIZED VIEW CONCURRENTLY} & Prevents blocking queries while refreshing, allowing consistent snapshots for users. \\
+\hline
+Write conflicts (alerts, configs) & Implement optimistic concurrency control using a \texttt{version\_id} or \texttt{last\_updated} timestamp field & Detects if a record was changed before writing; avoids silent overwrites. \\
+\hline
+Race conditions in personalization settings & Apply row-level locks with \texttt{SELECT ... FOR UPDATE} on the \texttt{dashboard\_config} and \texttt{alert} tables & Ensures atomic updates from concurrent processes. \\
+\hline
+Simultaneous ingestion from APIs & Use database transactions and unique constraints on timestamp + station + pollutant keys & Ensures no duplication during high-frequency ingestions. \\
+\hline
+Inter-process contention in distributed services & Design for eventual consistency and adopt message queues (e.g., Kafka or RabbitMQ) for ingestion pipelines (future implementation) & Allows safe decoupling of ingestion and processing layers, with ordering guarantees. \\
+\hline
+Dashboard latency under concurrent access & Introduce caching layers (e.g., Redis) and use read replicas for BI/reporting queries & Reduces load on the primary database, ensures fast dashboard performance. \\
+\hline
+\end{tabularx}
+\caption{Concurrency Problems and Control Mechanisms}
+\end{table}
+
+\subsection{Fit with Existing Architecture}
+
+Our architecture is already well-prepared to mitigate many concurrency issues:
+
+\begin{itemize}
+    \item \textbf{Partitioned PostgreSQL with TimescaleDB:} Ensures smaller scan sizes for time-based queries, reducing contention and improving concurrency in historical data access.
+    
+    \item \textbf{Materialized Views for Aggregations:} Used for fast dashboard and report queries. Combined with concurrent refresh, they prevent blocking reads during updates.
+    
+    \item \textbf{MinIO for raw ingestion backups:} All raw data is stored before processing, allowing replay in case of write conflicts or ingestion failures.
+    
+    \item \textbf{REST and GraphQL APIs with different access roles:} Enables permission separation between admin, citizen, and researcher roles, limiting write conflicts.
+    
+    \item \textbf{Potential improvements (future work):} We recommend implementing a versioning field in editable tables (e.g., alerts, recommendations) and exploring Kafka for ingestion pipelines to fully embrace asynchronous, scalable operations.
+\end{itemize}

@@ -1,0 +1,46 @@
+\section{User Stories}
+
+\begin{longtable}{|p{2.3cm}|p{6.3cm}|p{6.3cm}|}
+\hline
+\textbf{User Story ID} & \textbf{Role and Need} & \textbf{Acceptance Criteria} \\
+\hline
+US1 & As a Technical Administrator, I want to collect real-time data from multiple APIs so that I can provide accurate and up-to-date information on air quality. & The system receives updates at least every 10 minutes from configured sources. Processes at least 1000 data points per minute without loss. Logs successful and failed ingestions with error codes. \\
+\hline
+US2 & As a Researcher/Analyst, I want to access historical data by date and location so that I can perform longitudinal analysis and scientific research. & User can filter by city, date, and pollutant type. Data export available in CSV and JSON. Historical records available for up to 3 years. \\
+\hline
+US3 & As a Technical Administrator, I want to run queries over large volumes of data quickly so that I can avoid delays when searching for information. & Queries over 1 million records return in under 3 seconds. Indexes and partitions are used for performance. \\
+\hline
+US4 & As a Public Policy Manager, I want to access dashboards with real-time analysis so that I can issue alerts or recommendations to the public. & Dashboards include real-time maps, graphs, and alerts. Automatic refresh without manual reload. Critical thresholds can be configured for alerts. \\
+\hline
+US5 & As a Public Policy Manager, I want to generate customized reports on pollution trends so that I can design evidence-based public policies. & User can choose indicators, date ranges, and export formats. Reports are downloadable in PDF or sent via email. Graphs are auto-generated from selected data. \\
+\hline
+US6 & As a Citizen, I want to view interactive graphs about air quality evolution so that I can understand changes and make informed decisions. & Filters for location, date, and pollutant available. Charts update dynamically with parameter changes. Visualizations load in under 2 seconds. \\
+\hline
+US7 & As a Researcher/Analyst, I want to export historical data in standard formats so that I can analyze it with my own statistical tools. & Interface allows selection of location, date, and format. Files download successfully without errors. Download limits prevent system overload. \\
+\hline
+US8 & As a Citizen, I want to receive personalized recommendations based on air quality so that I can know if it is safe to do outdoor activities. & Location and user preferences are considered. Alert color coding (green, yellow, red) is used. Suggested actions are clearly displayed. \\
+\hline
+US9 & As a Citizen, I want to receive early warnings when air quality is harmful so that I can take precautions in time. & User can set alerts by pollutant and critical threshold. Notifications sent via email. Alert triggers when AQI surpasses configured limits. \\
+\hline
+US10 & As a Citizen, I want to receive suggestions for protective products so that I can protect my health during high pollution levels. & Suggestions appear only during high pollution periods. Products are certified and include links. User can disable this feature in preferences. \\
+\hline
+US11 & As a Citizen, I want to see areas with better air quality so that I can avoid the most polluted zones when moving. & System displays a map with AQI levels per area. Users can compare different city places. \\
+\hline
+US12 & As a Citizen, I want to load air quality data quickly so that I can access information without delay. & Air quality data loads in under 2 seconds normally. System handles 100 concurrent users without slowdown. Cache is used for frequently accessed queries. \\
+\hline
+US13 & As a Technical Administrator, I want to handle traffic peaks without failure so that I can maintain user experience during high demand. & Stress test simulates 1000 concurrent users. System remains responsive under load. Latency remains below 5 seconds per request. \\
+\hline
+US14 & As a Technical Administrator, I want to keep the platform available 24/7 so that I can ensure constant access to information. & Platform includes geographic redundancy. Uptime monitoring with automated alerts is enabled. Monthly availability is ≥ 99.9\%. \\
+\hline
+US15 & As a Citizen, I want to check air quality in different regions so that I can plan trips and activities. & Users can switch between countries/regions easily. Information is shown in local language where possible. \\
+\hline
+US16 & As a Citizen, I want to access the platform from various devices so that I can always access data regardless of the device. & Responsive design across mobile, tablet, and desktop. Core functions work on all devices. \\
+\hline
+US17 & As a Citizen, I want to share air quality data on social media so that I can inform and raise awareness among others. & Sharing available on X, Facebook, Instagram, WhatsApp. Preview includes summary and image. Links and QR codes are auto-generated for sharing. \\
+\hline
+\caption{User Stories}
+\end{longtable}
+
+\noindent\textbf{Corrections} Based on instructor feedback, one improvement was the inclusion of roles. New roles and acceptance criteria were added.
+
+\newpage
