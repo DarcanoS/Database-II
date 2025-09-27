@@ -1,0 +1,100 @@
+
+Table Station {
+  id int [pk]
+  name varchar
+  latitude float
+  longitude float
+  city varchar
+  country varchar
+  region_id int [ref: > MapRegion.id]
+}
+
+
+Table AirQualityReading {
+  id int [pk]
+  station_id int [ref: > Station.id]
+  pollutant_id int [ref: > Pollutant.id]
+  datetime timestamp
+  value float
+  aqi int
+}
+
+Table Pollutant {
+  id int [pk]
+  name varchar
+  unit varchar
+  description text
+}
+
+Table User {
+  id int [pk]
+  name varchar
+  email varchar
+  password_hash varchar
+  preferences text
+  location varchar
+  role_id int [ref: > Role.id]
+}
+
+Table Alert {
+  id int [pk]
+  user_id int [ref: > User.id]
+  pollutant_id int [ref: > Pollutant.id]
+  threshold float
+  method varchar
+  triggered_at timestamp
+}
+
+Table Recommendation {
+  id int [pk]
+  user_id int [ref: > User.id]
+  location varchar
+  suggestion text
+  pollution_level int
+  created_at timestamp
+}
+
+Table ProductRecommendation {
+  id int [pk]
+  recommendation_id int [ref: > Recommendation.id]
+  product_name varchar
+  product_type varchar
+  product_url varchar
+}
+
+Table Report {
+  id int [pk]
+  user_id int [ref: > User.id]
+  created_at timestamp
+  parameters text
+  file_path varchar
+}
+
+Table MapRegion {
+  id int [pk]
+  name varchar
+  geom geometry
+}
+
+Table DashboardConfig {
+  id int [pk]
+  user_id int [ref: > User.id]
+  settings_json json
+  last_updated timestamp
+}
+
+Table Role {
+  id int [pk]
+  name varchar [unique]
+}
+
+Table Permission {
+  id int [pk]
+  name varchar [unique]
+}
+
+Table RolePermission {
+  role_id int [ref: > Role.id]
+  permission_id int [ref: > Permission.id]
+  primary key (role_id, permission_id)
+}
