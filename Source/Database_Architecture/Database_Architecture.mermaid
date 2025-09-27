@@ -1,0 +1,44 @@
+flowchart TD
+  subgraph Clients
+    Citizen[Citizen&nbsp;/&nbsp;Mobile&nbsp;Web]
+    Researcher[Researcher&nbsp;/&nbsp;BI Tool]
+    Admin[Technical&nbsp;Admin]
+  end
+
+  subgraph API-Layer
+    api_main(API Server)
+    admin_api(API Admin)
+  end
+
+  subgraph Data-Core
+    PG[(PostgreSQL)]
+    MV{{Materialised<br/>Views}}
+    TSDB[(TimescaleDB hypertable<br/>extension)]  
+  end
+
+  subgraph ETL
+    Ingestor[Python Ingestor<br/>hourly cron]
+    Normalizer[Light Normalizer<br/>&amp; field mapping]
+  end
+
+  MinIO[(MinIO “raw-airquality”)]
+  Grafana[Grafana]
+
+  api_main -->|SQL| PG
+  api_main <-->|SQL| MV
+
+  admin_api --> PG
+
+  Citizen -->|REST JSON| api_main
+  Researcher -->|GraphQL / CSV| api_main
+  Admin --> |REST| admin_api
+  Admin -. queries .-> Grafana
+
+
+  Ingestor --> MinIO
+  Ingestor --> Normalizer
+  Normalizer --> PG
+  PG -. stats .-> Grafana
+
+  PG --> TSDB
+  PG <--> MV
