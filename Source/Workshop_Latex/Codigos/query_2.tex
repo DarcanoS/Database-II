@@ -1,5 +1,11 @@
-SELECT month, avg_value
-FROM monthly_avg_city_pollutant
-WHERE city='Medellin' AND pollutant_id = (SELECT id FROM pollutant 
-                                            WHERE name='PM2.5')
-ORDER BY month DESC LIMIT 36;
+SELECT 
+    DATE_TRUNC('month', aqr.datetime) as month,
+    AVG(aqr.value) as avg_value
+FROM AirQualityReading aqr
+JOIN Station s ON aqr.station_id = s.id
+JOIN Pollutant p ON aqr.pollutant_type = p.id
+WHERE s.city = 'Medellin'
+AND p.name = 'PM2.5'
+GROUP BY month
+ORDER BY month DESC
+LIMIT 36

@@ -1,0 +1,13 @@
+SELECT 
+    u.name AS user_name,
+    r.location,
+    r.pollution_level,
+    r.suggestion,
+    r.created_at,
+    COUNT(pr.id) AS product_recommendations_count
+FROM Recommendation r
+JOIN User u ON r.user_id = u.id
+LEFT JOIN ProductRecommendation pr ON r.id = pr.recommendation_id
+WHERE r.created_at >= NOW() - INTERVAL '30 days'
+GROUP BY u.name, r.location, r.pollution_level, r.suggestion, r.created_at
+ORDER BY r.created_at DESC, product_recommendations_count DESC;

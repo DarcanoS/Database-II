@@ -1,5 +1,10 @@
-SELECT payload
-FROM rawjson
-WHERE source_id = (SELECT id FROM apisource WHERE name='google')
-  AND collected_at > now() - interval '1 hour'
-LIMIT 10;
+SELECT 
+    s.name as station_name,
+    aqr.datetime,
+    aqr.pollutant_type,
+    aqr.value,
+    aqr.aqi
+FROM AirQualityReading aqr
+JOIN Station s ON aqr.station_id = s.id
+ORDER BY aqr.datetime DESC
+LIMIT 10

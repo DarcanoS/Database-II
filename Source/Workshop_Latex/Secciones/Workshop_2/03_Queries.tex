@@ -1,42 +1,65 @@
 \section{Query Proposals}
+
 This section describes the purpose of each example SQL query proposed in the architecture, linking them to the functional and performance requirements of the system. Only SQL is used, as the only tool that explicitly allows queries by code is Postgres.
-\subsection*{1. Latest Air Quality Index (AQI) per City}
+
+\subsection*{1. Latest Air Quality Readings per Station}
+
 \begin{listing}[H]
 \caption{Query Latest Air Quality}
 \label{code:query1}
 \inputminted[linenos]{sql}{Codigos/query_1.tex}
 \end{listing}
 
-\textbf{Purpose:}  
-This query retrieves the most recent AQI readings for all pollutants measured in Bogotá. It supports real-time display of air quality cards on the dashboard and fulfills user stories requiring fast access to current conditions (e.g., US1, US4, US9).
+\textbf{Purpose:} This query retrieves the most recent air quality readings for all pollutants measured in Bogotá stations. It supports real-time display of air quality cards on the dashboard and fulfills user stories requiring fast access to current conditions (e.g., US1, US4, US9).
 
-\textbf{Output:}  
-Returns pollutant type, AQI value, and timestamp of the latest measurement for the given city, using a materialized view for high performance.
+\textbf{Output:} Returns station name, location, pollutant type, measured value, AQI, and timestamp of the latest measurement for each station in the given city.
 
-\subsection*{2. Monthly Historical Averages by Pollutant}
+\subsection*{2. Monthly Historical Averages by Pollutant and City}
+
 \begin{listing}[H]
 \caption{Query Monthly Historical}
-\label{code:query1}
+\label{code:query2}
 \inputminted[linenos]{sql}{Codigos/query_2.tex}
 \end{listing}
 
-\textbf{Purpose:}  
-This query supports longitudinal trend analysis by computing average air quality values per month for a specific pollutant. It enables researchers and public policy analysts to track pollution evolution over time (e.g., US2, US5, US7).
+\textbf{Purpose:} This query supports longitudinal trend analysis by computing average air quality values per month for a specific pollutant. It enables researchers and public policy analysts to track pollution evolution over time (e.g., US2, US5, US7).
 
-\textbf{Output:}  
-Returns a time series of average pollutant concentrations or AQI values by month for the last three years.
+\textbf{Output:} Returns a time series of average pollutant concentrations and AQI values by month for the last three years in the specified city.
 
-\subsection*{3. Raw JSON Payloads for Debugging}
+\subsection*{3. Active User Alerts and Configurations}
+
 \begin{listing}[H]
-\caption{Query Raw JSON}
-\label{code:query1}
+\caption{Query User Alert Configurations}
+\label{code:query3}
 \inputminted[linenos]{sql}{Codigos/query_3.tex}
 \end{listing}
 
-\textbf{Purpose:}  
-This query provides access to raw API responses stored in JSON format for traceability and debugging. It supports administrators in verifying the integrity of ingested data and handling ingestion failures (e.g., US1, US13).
+\textbf{Purpose:} This query provides insights into user alert patterns and configurations, helping administrators understand which pollution thresholds are most frequently triggered and how users interact with the alert system (e.g., US9, US14).
 
-\textbf{Output:}  
-Returns the original JSON payloads from the Google API that were collected in the last hour, helping verify field mappings and ingestion consistency.
+\textbf{Output:} Returns user alert configurations along with the count of triggered alerts in the last 7 days, grouped by user and pollutant type.
+
+\subsection*{4. Station Coverage and Data Completeness}
+
+\begin{listing}[H]
+\caption{Query Station Coverage Analysis}
+\label{code:query4}
+\inputminted[linenos]{sql}{Codigos/query_4.tex}
+\end{listing}
+
+\textbf{Purpose:} This query analyzes station coverage and data completeness across different geographic regions, supporting system monitoring and ensuring data quality for all covered areas (e.g., US1, US13, US14).
+
+\textbf{Output:} Returns station count, monitored pollutant types, latest reading timestamp, and reading volume for each city and country.
+
+\subsection*{5. User Recommendation History}
+
+\begin{listing}[H]
+\caption{Query User Recommendation Analysis}
+\label{code:query5}
+\inputminted[linenos]{sql}{Codigos/query_5.tex}
+\end{listing}
+
+\textbf{Purpose:} This query analyzes the recommendation engine's output and user engagement with suggested actions and products, helping optimize the personalization algorithms (e.g., US8, US10, US11).
+
+\textbf{Output:} Returns user recommendation history including location, pollution level, suggestions, and associated product recommendations from the last 30 days.
 
 \newpage
