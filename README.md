@@ -5,6 +5,7 @@ Welcome to the official repository for our **Databases 2** course project. This 
 ## Structure
 
 - [`Workshop-1`](/Workshop-1/): Contains the files and deliverables for **Workshop 1**.
+- [`Workshop-2`](/Workshop-2/): Contains the files and deliverables for **Workshop 2**.
 - `README.md`: Project documentation and general information.
 
 ##  Project Participants
@@ -19,6 +20,10 @@ Welcome to the official repository for our **Databases 2** course project. This 
 ## Workshop 1
 
 You can find the deliverables and documentation for **Workshop 1** [here](./Workshop-1/Workshop_1.pdf).
+
+## Workshop 2
+
+You can find the deliverables and documentation for **Workshop 2** [here](./Workshop-2/Workshop_2.pdf).
 
 <!-- ## CatchUp
 
