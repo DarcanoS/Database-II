@@ -1,3 +1,3 @@
 pdflatex -shell-escape main.tex
 
-mv main.pdf ../../Workshop-1/Workshop_1.pdf
+mv main.pdf ../../Workshop-2/Workshop_2.pdf
