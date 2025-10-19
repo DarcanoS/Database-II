@@ -332,6 +332,10 @@ pythontex-files-*/
 # PDF files (uncomment if you don't want to track PDFs)
 main.pdf
 
+# Generated PDFs in specific directories
+src/Paper_Latex/Paper.pdf
+src/Workshop_Latex/Workshop.pdf
+
 # OS generated files
 .DS_Store
 .DS_Store?
