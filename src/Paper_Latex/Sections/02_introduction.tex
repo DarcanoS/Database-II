@@ -1,0 +1,35 @@
+\section{Introduction}
+
+\subsection{Air-quality as a persistent public-health challenge}
+
+Ambient and household air pollution jointly kill an estimated seven to eight million people every year, with 99\% of the world’s population breathing air that exceeds WHO guideline values~\cite{whopollution}. The 2024 State of Global Air report ranks PM$_{2.5}$ exposure as the second leading risk factor for mortality, ahead of high blood pressure or smoking~\cite{state}. 
+
+In Bogotá, long-term analyses still show spatially heterogeneous PM$_{2.5}$ hot spots, despite a gradual decline from 15.7~\textmu g/m$^3$ in 2017 to 13.1~\textmu g/m$^3$ in 2019 and targeted reductions after the city’s Air Plan 2030.
+
+These figures underscore the need for continuous, fine-grained monitoring and citizen-oriented decision support.
+
+\subsection{Existing Real-Time Data Sources and Their Limitations}
+
+Public platforms already expose rich air-quality feeds:
+\begin{itemize}
+    \item \textbf{AQICN} offers minute-level AQI and historical archives for over 100 countries, but only as raw values without personalization~\cite{aqicn}.
+    \item \textbf{Google Air Quality API} adds 500~m-resolution indices plus pollutant-specific health tips, yet enforces strict quota limits that complicate city-scale analytics~\cite{google}.
+    \item \textbf{IQAir AirVisual} provides calibrated sensor networks and an open REST API, but aggregates most data hourly and charges for higher-volume tiers~\cite{iqair}.
+\end{itemize}
+
+Researchers therefore must integrate heterogeneous payloads, align units/scales, and enrich them with user context before actionable insights can be served in real time.
+
+\subsection{Related Work}
+
+Recent reviews highlight two converging trends: (i) low-cost sensor networks that multiply spatiotemporal coverage and (ii) big-data stream processing frameworks that tame velocity and variety~\cite{wiley}. Case studies on distributed IoT monitoring schemes stress the need for edge buffering, asynchronous queues, and latency-aware cleaning routines~\cite{mdpi}. Apache Spark Structured Streaming combined with Kafka has proven effective for sliding-window aggregation and outlier detection on environmental telemetry~\cite{medium}, while Kafka-Flink pipelines now achieve sub-second end-to-end lag in ESG and smart-city use cases~\cite{esr}. Nevertheless, prior systems generally stop at visualization and seldom close the loop with personalized recommendations or multichannel alerts, leaving a gap our work addresses.
+
+\subsection{Contribution}
+
+\begin{enumerate}
+    \item \textbf{An end-to-end PostgreSQL-based architecture} that unifies three public APIs via a cron-triggered Python Ingestor, raw storage in MinIO, and a normalization pipeline writing to monthly city-partitioned tables with TimescaleDB; queries are accelerated using concurrently refreshed materialized views (Fig.~\ref{fig:architecture}).
+    \item \textbf{A lightweight recommendation engine} that translates AQI thresholds and user metadata (location, activity, risk profile) into color-coded advice and product suggestions, aligned with project user stories US8–US11.
+    \item \textbf{Quantitative evidence} of latency, scalability, and recommendation accuracy (Section~III), gathered under a 1000-concurrent-user JMeter load test, satisfying non-functional requirements NFR1–NFR4.
+\end{enumerate}
+
+
+The remainder of the paper is organized as follows: Section~II details system design and algorithmic choices; Section~III reports experimental results; Section~IV concludes with lessons learned and future extensions toward predictive modeling and multi-region deployments.

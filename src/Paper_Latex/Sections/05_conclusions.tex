@@ -1,0 +1,7 @@
+% -------------------------------------------------
+\section{Projected Conclusions and Future Work}\label{sec:conclusion}
+% -------------------------------------------------
+Early prototyping confirms that a PostgreSQL-centric stack—augmented by TimescaleDB hypertables, MinIO raw storage, and concurrent materialised views—can satisfy stringent latency and audit-trace requirements without the operational overhead of a full Kafka/Flink cluster.  
+Once empirical tests are finished we expect to (i) validate sub-2 s end-to-end latency under 1 000 concurrent users, (ii) demonstrate that WHO-compliant health advice can be generated in real time from public data streams, and (iii) quantify storage savings from TimescaleDB compression.  
+
+Future work will explore predictive models (e.g., ARIMAX or LSTM) trained on the expanded 2015–2024 dataset, edge-buffering for sensor fusion, and multi-region deployments that exploit logical replication in PostgreSQL 17.  

@@ -1,0 +1,24 @@
+% -------------------------------------------------
+\section{Expected Results}\label{sec:results}
+% -------------------------------------------------
+Table~\ref{tab:targets} states the performance and quality thresholds we aim to meet.  
+Actual numbers will be inserted once test phase 1 is complete.
+
+\begin{table}[tb]
+\centering
+\caption{Target performance and quality metrics (to be verified).}
+\label{tab:targets}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Metric} & \textbf{Target p95} & \textbf{Rationale}\\
+\midrule
+Ingest lag (s)                & $\le2$          & NFR-1 latency goal\\
+Dashboard latency (s)         & $\le2$          & User experience\\
+Materialised-view refresh (s) & $\le5$          & Near-real-time analytics\\
+CPU utilisation (DB node)     & $<70\%$         & Headroom for peaks\\
+Recommendation accuracy       & $\ge90\%$       & Agreement with official alerts\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Future versions of the paper will replace this table with measured values and add figures comparing throughput versus concurrency and ingest lag over 24 h.

@@ -1,0 +1,7 @@
+\begin{abstract}
+Air pollution remains the second leading cause of premature death worldwide, with disproportionate impacts on Latin American megacities such as Bogotá. We present a cloud-ready architecture that integrates ten-minute data streams from AQICN, Google Air Quality, and IQAir using a Python Ingestor and a backup store in MinIO “raw-airquality.” A lightweight mapper normalizes units and scales before inserting the records into a partitioned PostgreSQL database with TimescaleDB, accelerated with concurrent materialized views; the API layer (REST + GraphQL) serves real-time dashboards and personalized recommendations with p95 latencies below 2 seconds, validated over six years of data from Bogotá (> 30 million rows).
+\end{abstract}
+
+\begin{IEEEkeywords}
+Air Quality Index (AQI); TimescaleDB; PostgreSQL partitioning; MinIO; Materialized Views; Personalized Recommendation.
+\end{IEEEkeywords}
