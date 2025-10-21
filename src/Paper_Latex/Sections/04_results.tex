@@ -1,24 +1,36 @@
 % -------------------------------------------------
 \section{Expected Results}\label{sec:results}
 % -------------------------------------------------
-Table~\ref{tab:targets} states the performance and quality thresholds we aim to meet.  
-Actual numbers will be inserted once test phase 1 is complete.
+Table~\ref{tab:targets} presents the target performance and quality metrics aligned with the non-functional requirements (NFR1–NFR8) defined in the project specification.  
+These thresholds will be validated during planned load testing with 1000 concurrent users (US13) once the implementation phase is complete.
 
 \begin{table}[tb]
 \centering
-\caption{Target performance and quality metrics (to be verified).}
+\caption{Target performance and quality metrics mapped to non-functional requirements.}
 \label{tab:targets}
 \begin{tabular}{lcc}
 \toprule
-\textbf{Metric} & \textbf{Target p95} & \textbf{Rationale}\\
+\textbf{Metric} & \textbf{Target (p95)} & \textbf{Requirement}\\
 \midrule
-Ingest lag (s)                & $\le2$          & NFR-1 latency goal\\
-Dashboard latency (s)         & $\le2$          & User experience\\
-Materialised-view refresh (s) & $\le5$          & Near-real-time analytics\\
-CPU utilisation (DB node)     & $<70\%$         & Headroom for peaks\\
-Recommendation accuracy       & $\ge90\%$       & Agreement with official alerts\\
+Query latency (≥1M rows)      & $\le2$ s        & NFR1, NFR3\\
+Dashboard load time           & $\le2$ s        & NFR6, US12\\
+Report generation             & $\le10$ s       & NFR4\\
+Recommendation update freq.   & $10$ min        & NFR5\\
+Materialized view refresh     & $\le5$ s        & Near-real-time\\
+Concurrent user capacity      & $1000$ users    & US13, NFR8\\
+System uptime                 & $\ge99.9\%$     & NFR7, US14\\
+Peak CPU utilization          & $<70\%$         & Headroom\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Future versions of the paper will replace this table with measured values and add figures comparing throughput versus concurrency and ingest lag over 24 h.
+The evaluation methodology will include:
+\begin{itemize}
+    \item \textbf{Query performance}: Execution time measurements over partitioned tables containing 1+ million air quality records filtered by city, date, and pollutant type (NFR1).
+    \item \textbf{Dashboard responsiveness}: End-to-end latency from API request to visualization rendering under normal and peak load conditions (NFR6).
+    \item \textbf{Scalability}: Apache JMeter load tests simulating 1000 concurrent users accessing dashboards, generating reports, and triggering alerts simultaneously (US13, NFR8).
+    \item \textbf{Data freshness}: Monitoring of ingestion-to-availability lag for the 10-minute update cycle from external APIs (NFR5, US1).
+    \item \textbf{Availability}: Uptime tracking and fault tolerance validation through simulated node failures (NFR7, US14).
+\end{itemize}
+
+Future iterations of this paper will present measured results including throughput-versus-concurrency curves, ingestion lag distribution over 24-hour periods, and comparison against baseline PostgreSQL performance without TimescaleDB optimizations.

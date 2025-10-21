@@ -1,7 +1,19 @@
 % -------------------------------------------------
 \section{Projected Conclusions and Future Work}\label{sec:conclusion}
 % -------------------------------------------------
-Early prototyping confirms that a PostgreSQL-centric stack—augmented by TimescaleDB hypertables, MinIO raw storage, and concurrent materialised views—can satisfy stringent latency and audit-trace requirements without the operational overhead of a full Kafka/Flink cluster.  
-Once empirical tests are finished we expect to (i) validate sub-2 s end-to-end latency under 1 000 concurrent users, (ii) demonstrate that WHO-compliant health advice can be generated in real time from public data streams, and (iii) quantify storage savings from TimescaleDB compression.  
+Air pollution-related mortality remains a critical public health challenge, particularly in Latin American megacities like Bogotá where spatially heterogeneous PM$_{2.5}$ exposure affects millions.  
+This work addresses the gap between raw real-time data availability and actionable citizen-oriented insights through an integrated PostgreSQL-based platform that unifies heterogeneous air quality feeds, normalizes units and scales, and delivers personalized health recommendations.
 
-Future work will explore predictive models (e.g., ARIMAX or LSTM) trained on the expanded 2015–2024 dataset, edge-buffering for sensor fusion, and multi-region deployments that exploit logical replication in PostgreSQL 17.  
+Early architectural design confirms that a TimescaleDB-augmented PostgreSQL stack with monthly-partitioned hypertables, concurrent materialized views, and MinIO raw storage can meet stringent performance requirements (NFR1–NFR7) without the operational complexity of distributed streaming frameworks like Kafka/Flink.  
+The proposed three-layer data model (Geospatial, Customer, Recommendation Engine) supports functional requirements spanning real-time monitoring (FR1–FR4), historical analytics (FR5–FR7), and personalized alerts with certified product suggestions (FR8–FR11).  
+Concurrency control mechanisms including optimistic locking, row-level locks, and unique constraints address write conflicts during parallel API ingestion and multi-device user interactions.
+
+Once implementation and load testing are complete, we expect to validate: (i) sub-2 s query latency at p95 for datasets exceeding 1M rows under 1000 concurrent users (NFR1, US13), (ii) 10-minute recommendation refresh cycles aligned with WHO health guidelines (NFR5, US8), and (iii) system uptime $\ge$99.9\% with geographic redundancy (NFR7, US14).
+
+Future work will expand the platform in three directions:
+\begin{itemize}
+    \item \textbf{Predictive analytics}: Time-series forecasting models (ARIMAX, LSTM) trained on extended historical datasets (2018–2024) to anticipate pollution peaks 6–24 hours in advance.
+    \item \textbf{Performance optimization}: Read replica deployment for dashboard traffic separation, Redis caching layer for frequently accessed queries, and message queue integration (RabbitMQ or Kafka) for fully asynchronous ingestion pipelines.
+    \item \textbf{Geographic expansion}: Multi-region deployment across additional Latin American cities (Medellín, Cali, Santiago, Lima) exploiting PostgreSQL 17 logical replication and region-specific data partitioning strategies.
+\end{itemize}
+  

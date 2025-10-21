@@ -14,7 +14,7 @@ Public platforms already expose rich air-quality feeds:
 \begin{itemize}
     \item \textbf{AQICN} offers minute-level AQI and historical archives for over 100 countries, but only as raw values without personalization~\cite{aqicn}.
     \item \textbf{Google Air Quality API} adds 500~m-resolution indices plus pollutant-specific health tips, yet enforces strict quota limits that complicate city-scale analytics~\cite{google}.
-    \item \textbf{IQAir AirVisual} provides calibrated sensor networks and an open REST API, but aggregates most data hourly and charges for higher-volume tiers~\cite{iqair}.
+    \item \textbf{IQAir AirVisual} provides calibrated sensor networks and an open REST API, but aggregates most data hourly and charges for higher-volume tiers~\cite{iqairapi}.
 \end{itemize}
 
 Researchers therefore must integrate heterogeneous payloads, align units/scales, and enrich them with user context before actionable insights can be served in real time.
@@ -25,11 +25,13 @@ Recent reviews highlight two converging trends: (i) low-cost sensor networks tha
 
 \subsection{Contribution}
 
+This work presents a comprehensive air quality monitoring platform designed to address the identified gaps through three main contributions:
+
 \begin{enumerate}
-    \item \textbf{An end-to-end PostgreSQL-based architecture} that unifies three public APIs via a cron-triggered Python Ingestor, raw storage in MinIO, and a normalization pipeline writing to monthly city-partitioned tables with TimescaleDB; queries are accelerated using concurrently refreshed materialized views (Fig.~\ref{fig:architecture}).
-    \item \textbf{A lightweight recommendation engine} that translates AQI thresholds and user metadata (location, activity, risk profile) into color-coded advice and product suggestions, aligned with project user stories US8–US11.
-    \item \textbf{Quantitative evidence} of latency, scalability, and recommendation accuracy (Section~III), gathered under a 1000-concurrent-user JMeter load test, satisfying non-functional requirements NFR1–NFR4.
+    \item \textbf{An end-to-end PostgreSQL-based architecture} that unifies three public APIs via a 10-minute interval Python Ingestor, raw storage in MinIO, and a normalization pipeline writing to monthly city-partitioned tables with TimescaleDB; queries are accelerated using concurrently refreshed materialized views (Fig.~\ref{fig:architecture}).
+    \item \textbf{A lightweight recommendation engine} that translates AQI thresholds and user metadata (location, activity, risk profile) into color-coded health advice and certified product suggestions during high pollution periods, addressing functional requirements FR8–FR11 defined in project user stories (US8: personalized recommendations; US9: customizable alerts; US10: protective product suggestions; US11: cleaner-area navigation).
+    \item \textbf{Target performance metrics} for latency, scalability, and system availability (Section~III) designed to satisfy non-functional requirements NFR1–NFR4, including sub-2-second query response times at p95 under a planned 1000-concurrent-user JMeter load test.
 \end{enumerate}
 
 
-The remainder of the paper is organized as follows: Section~II details system design and algorithmic choices; Section~III reports experimental results; Section~IV concludes with lessons learned and future extensions toward predictive modeling and multi-region deployments.
+The remainder of the paper is organized as follows: Section~II details system design and algorithmic choices; Section~III presents the planned experimental methodology and target metrics; Section~IV concludes with projected outcomes and future extensions toward predictive modeling and multi-region deployments.
