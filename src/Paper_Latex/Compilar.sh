@@ -10,7 +10,6 @@ pdflatex -interaction=nonstopmode -shell-escape Paper.tex
 pdflatex -interaction=nonstopmode -shell-escape Paper.tex
 
 # Crear directorio de destino y mover el PDF
-mkdir -p ../../docs/Paper
 cp Paper.pdf ../../Catch-Up/Paper.pdf
 
-echo "Compilación completada. PDF generado en docs/Paper/Paper.pdf"
+echo "Compilación completada. PDF generado en Catch-Up/Paper.pdf"

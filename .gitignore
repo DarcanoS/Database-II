@@ -334,7 +334,9 @@ main.pdf
 
 # Generated PDFs in specific directories
 src/Paper_Latex/Paper.pdf
+src/Poster_Latex/Poster.pdf
 src/Workshop_Latex/Workshop.pdf
+src/Report_Latex/Report.pdf
 
 # OS generated files
 .DS_Store
