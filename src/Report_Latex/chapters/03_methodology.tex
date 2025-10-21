@@ -3,11 +3,144 @@
 \chapter{Methodology}
 \label{ch:method} % Label for method chapter
 
-We mentioned in Chapter~\ref{ch:into} %[example backward reference to a chapter or section.]
-that a project report's structure could follow a particular paradigm. Hence, the organization of a report (effectively the Table of Content of a report) can vary depending on the type of project you are doing. Check which of the given examples suit your project. Alternatively, follow your supervisor's advice.
+This chapter describes the objectives, scope, assumptions, limitations and the methods used to design and evaluate the air quality monitoring platform for Bogotá. Where possible, implementation details and parameter choices are drawn from the project workshops and the planned architecture described in earlier chapters.
 
-\section{Examples of the sections of a methodology chapter}
-A general report structure is summarised (suggested) in Table~\ref{tab:gen_template}. Table~\ref{tab:gen_template} describes that, in general, a typical report structure has three main parts: (1) front matter, (2) main text, and (3) end matter. %[\textbf{also notice that the preceding sentence is an example of a numbered list in a text body}]. 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Objectives}
+\label{sec:method_objectives}
+
+The primary objective of this project is to design and implement a centralized, cloud-ready air quality monitoring platform that integrates real-time data from multiple sources and provides personalized, actionable health recommendations to citizens in Bogotá. The specific research and engineering objectives are:
+\begin{enumerate}
+    \item Design a scalable time-series database architecture based on PostgreSQL and TimescaleDB that supports monthly partitioning and efficient queries over multi-year datasets.
+    \item Implement a robust data ingestion pipeline that collects heterogeneous data from AQICN, Google Air Quality API, and IQAir at 10-minute intervals and stores raw payloads in MinIO for audit and replay.
+    \item Define a normalization schema and ETL process that harmonizes units, field names and AQI scales into a unified relational schema.
+    \item Implement query acceleration using concurrently refreshed materialized views and appropriate indexing strategies to meet target latency goals (p95 < 2s under 1000 concurrent users).
+    \item Provide an API layer (REST + GraphQL) that serves dashboards, researcher exports (CSV), and programmatic integrations.
+    \item Develop a rule-based recommendation engine that maps AQI categories and user metadata into personalized health advice and product suggestions.
+    \item Validate the system against planned performance tests and document lessons learned for future scaling and predictive extensions.
+\end{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Scope}
+\label{sec:method_scope}
+
+This project focuses on a single-city deployment (Bogotá) with an initial historical dataset covering 2022--2024. The scope includes:
+\begin{itemize}
+    \item Collection of air quality observations from external APIs (AQICN, Google Air Quality, IQAir) and local government sources where available.
+    \item Storage of raw JSON payloads in MinIO and normalized records in a PostgreSQL/TimescaleDB hypertable partitioned by month and city.
+    \item Implementation of a recommendation engine based on AQI thresholds and user-provided risk profiles.
+    \item Implementation of an API layer and basic dashboard endpoints for citizens and researchers.
+    \item Performance validation using planned JMeter load tests and Prometheus/Grafana monitoring.
+\end{itemize}
+
+Exclusions (out of scope for the current phase):
+\begin{itemize}
+    \item Real-time high-frequency (sub-minute) ingestion; the current architecture targets 10-minute ingestion intervals.
+    \item Full-scale distributed stream-processing fabrics (Kafka/Flink) are not implemented in the baseline but are described as future extensions.
+    \item Clinical validation of health recommendations with medical professionals (recommendations are based on public guidelines and should not replace medical advice).
+    \item Multi-city production deployment—this is left as future work after Bogotá evaluation.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Assumptions}
+\label{sec:method_assumptions}
+
+The following assumptions guided the design and evaluation:
+\begin{itemize}
+    \item External APIs (AQICN, Google, IQAir) provide consistent identifiers for stations and timestamps in UTC or include timezone information that can be normalized.
+    \item Ingestion at 10-minute intervals is sufficient for citizen-oriented recommendations and dashboard responsiveness for the Bogotá use case.
+    \item Historical CSV archives (2022--2024) are representative for initial benchmarking and performance validation.
+    \item Users can supply minimal profile information (location, activity preferences, basic health risk flags) to enable personalization without requiring sensitive medical records.
+    \item The deployment environment will provide at least the planned hardware profile for performance testing (e.g., 4 vCPU, 16 GB RAM for the primary database node).
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Limitations}
+\label{sec:method_limitations}
+
+This project has several limitations that affect interpretation and generalization of the results:
+\begin{itemize}
+    \item Data availability and API quotas may limit continuous ingestion from third-party providers; historical archives reduce but do not eliminate this constraint.
+    \item The recommendation engine is rule-based and deterministic; it does not incorporate personalized predictive models or machine-learning-driven forecasting in the baseline.
+    \item Sensor calibration and data quality from heterogeneous sources remain a challenge; low-cost sensors may introduce bias and require calibration procedures outside the initial scope.
+    \item The performance targets assume a modest single-node deployment; results may differ on constrained hardware or cloud instances with different I/O characteristics.
+    \item Ethical and clinical validation of health advice is outside the project's scope; recommendations should be treated as informational rather than clinical directives.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Methodology}
+\label{sec:method_method}
+
+This section details the methods, data flows, and experimental procedures used to design, implement, and validate the system. The methodology is organized by functional component: data ingestion, normalization and storage, query acceleration, API layer, recommendation engine, and performance validation.
+
+\subsection{Data Ingestion}
+\label{subsec:method_ingest}
+
+Data is collected by a Python-based ingestion service configured to poll selected external APIs every 10 minutes. Each poll performs the following steps:
+\begin{enumerate}
+    \item Retrieve JSON payloads for Bogotá and related stations from AQICN, Google Air Quality API, and IQAir endpoints.
+    \item Persist the raw JSON to MinIO under a versioned key with schema: \texttt{raw-airquality/YYYY/MM/DD/HHMM\_source\_station.json} for auditability and reprocessing.
+    \item Emit a lightweight validation check (schema presence, timestamp parseable, sensor id) and place invalid payloads into a quarantine bucket for manual inspection.
+    \item Forward valid payloads to the normalizer via an in-process call (or message queue in future iterations).
+\end{enumerate}
+
+\subsection{Normalization and Storage}
+\label{subsec:method_normalization}
+
+The normalizer maps each provider-specific payload to a unified relational schema. Key steps:
+\begin{itemize}
+    \item Field mapping: provider fields (for example, \texttt{pm25}, \texttt{PM2\_5} or \texttt{pm\_2\_5}) are normalized to the canonical column name \texttt{pm25}.
+    \item Unit harmonization: concentrations are converted to standard units (\(\mu\)g/m\(^{3}\)) where necessary.
+    \item AQI conversion: when providers publish different AQI scales, the normalizer converts pollutant concentrations into the chosen standard AQI scale (EPA or WHO mappings) to keep recommendations consistent.
+    \item Persistence: insert normalized records into the \texttt{airquality\_reading} hypertable partitioned by month and city (TimescaleDB). Each insert is executed in a short transaction and uses identifiers such as \texttt{station\_id} and \texttt{pollutant\_id} with a uniqueness constraint on (\texttt{station\_id}, \texttt{pollutant\_id}, \texttt{datetime}) to avoid duplicates.
+\end{itemize}
+
+\subsection{Query Acceleration and Indexing}
+\label{subsec:method_query}
+
+To support sub-2-second p95 latency targets the system uses multiple optimization techniques:
+\begin{itemize}
+    \item Concurrently refreshed materialized views for pre-computed aggregation windows (15-minute, hourly, daily) and for common dashboard queries.
+    \item Composite B-tree indexes on (\texttt{timestamp}, \texttt{station\_id}, \texttt{pollutant\_id}) and partial indexes that cover recent data (for example, the last 30 days).
+    \item BRIN indexes for very large historical partitions; BRIN reduces index size and maintenance overhead for old chunks.
+    \item TimescaleDB continuous aggregates for frequently requested rollups to reduce on-demand computation costs.
+\end{itemize}
+
+\subsection{API Layer and Services}
+\label{subsec:method_api}
+
+The API layer exposes both REST and GraphQL endpoints. Key design choices:
+\begin{itemize}
+    \item Authentication: lightweight token-based authentication for researchers and admin users; public endpoints for citizen dashboards limit per-IP rate to protect upstream APIs and database load.
+    \item Endpoints: summary endpoints for current AQI, rolling-window endpoints for time series (GraphQL supports nested queries), and CSV export endpoints for researchers.
+    \item Observability: Prometheus metrics exposed for ingest latency, API response times, materialized view refresh duration, and DB query statistics; Grafana dashboards visualize these metrics.
+\end{itemize}
+
+\subsection{Recommendation Engine}
+\label{subsec:method_reco}
+
+The recommendation engine is rule-based and deterministic. Implementation highlights:
+\begin{itemize}
+    \item Input: latest AQI per location, user profile (age bracket, respiratory risk flag, activity preference), and optional device location.
+    \item Rule set: AQI category lookup table (EPA bands) maps to health advice templates. Rules include thresholds for protective product suggestions (for example, recommend N95 when AQI $\geq$ 151 for outdoor exercise).
+    \item Delivery: notifications via email or push; caching layer prevents repeated alerts for unchanged AQI categories within a 3-hour TTL unless user location changes by $>2\,$km.
+    \item Explainability: each recommendation includes the rule identifier and the AQI/pollutant evidence used to derive it to enable user transparency.
+\end{itemize}
+
+\subsection{Performance Validation and Experiments}
+\label{subsec:method_experiments}
+
+Planned experiments to validate system properties:
+\begin{itemize}
+    \item \textbf{Dataset ingestion}: ingest three years (2022--2024) of Bogotá historical data into the hypertable and measure storage growth and ingest throughput.
+    \item \textbf{Load testing}: use Apache JMeter to simulate up to 1000 concurrent users issuing dashboard and CSV-export requests. Measure p95 latency, throughput, CPU and I/O utilization.
+    \item \textbf{Materialized view refresh tests}: measure refresh duration of key views under varying chunk sizes and concurrency; tune chunk time intervals and refresh schedule based on results.
+    \item \textbf{Fault-injection}: emulate API downtime and delayed ingestion to validate replay from MinIO and quarantine/reprocessing procedures.
+\end{itemize}
+
+\section{Summary}
+
+This methodology chapter documents the concrete steps and design choices used to build an end-to-end air quality monitoring platform for Bogotá. The following chapter details the implementation and experimental results obtained while evaluating the proposed system. Table~\ref{tab:gen_template} describes that, in general, a typical report structure has three main parts: (1) front matter, (2) main text, and (3) end matter. %[\textbf{also notice that the preceding sentence is an example of a numbered list in a text body}]. 
 The structure of the front matter and end matter will remain the same for all the undergraduate final year project report. However, the main text varies as per the project's needs.
 \begin{table}[!ht]
     \centering

@@ -1,88 +1,101 @@
 \chapter{Introduction}
-\label{ch:into} % This how you label a chapter and the key (e.g., ch:into) will be used to refer this chapter ``Introduction'' later in the report. 
-% the key ``ch:into'' can be used with command \ref{ch:intor} to refere this Chapter.
+\label{ch:into}
 
-\textbf{Guidance on introduction chapter writing:} Introductions are written in the following parts:
-\begin{itemize}
-    \item A brief  description of the investigated problem.
-    \item A summary of the scope and context of the project, i.e., what is the background of the topic/problem/application/system/algorithm/experiment/research question/hypothesis/etc. under investigation/implementation/development [whichever is applicable to your project].
-    \item The aims and objectives of the project.
-    \item A description of the problem and the methodological approach adopted to solve the problem.
-    \item A summary of the most significant outcomes and their interpretations.
-    \item Organization of the report. 
-\end{itemize}
-
-
-Consult \textbf{your supervisor} to check the content of the introduction chapter. In this template, we only offer basic sections of an introduction chapter. It may  not be complete and comprehensive. Writing a report is a subjective matter, and a report's style and structure depend on the ``type of project'' as well as an individual's preference. This template suits the following project paradigms:
-\begin{enumerate}
-    \item software engineering and software/web application development;
-    \item algorithm implementation, analysis and/or application;  
-    \item science lab (experiment); and
-    \item pure theoretical development (not mention extensively).
-\end{enumerate}
-
-Use only a single \textbf{font} for the body text. We recommend using a clean and electronic document friendly font like \textbf{Arial} or \textbf{Calibri} for MS-word (If you create a report in MS word). If you use this template, DO NOT ALTER the template's default font ``amsfont default computer modern''. The default \LaTeX~font ``computer modern'' is also acceptable. 
-
-The recommended body text \textbf{font size} is minimum \textbf{11pt} and minimum one-half line spacing. The recommended figure/table caption font size is minimum 10pt. The footnote\footnote{Example footnote: footnotes are useful for adding external sources such as links as well as extra information on a topic or word or sentence. Use command \textbackslash footnote\{...\} next to a word to generate a footnote in \LaTeX.} font size is minimum 8pt. DO NOT ALTER the font setting of this template.   
+Air quality monitoring has become a critical concern for public health, particularly in rapidly growing urban centers. This report presents the design and implementation of a comprehensive architecture for real-time air quality monitoring and personalized health recommendations, with a specific focus on Bogotá, Colombia.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Background}
 \label{sec:into_back}
-Describe to a reader the context of your project. That is, what is your project and what its motivation. Briefly explain the major theories, applications, and/or products/systems/algorithms whichever is relevant to your project.
 
-\textbf{Cautions:} Do not say you choose this project because of your interest, or your supervisor proposed/suggested this project, or you were assigned this project as your final year project. This all may be true, but it is not meant to be written here.
+Ambient and household air pollution jointly kill an estimated seven to eight million people every year, with 99\% of the world's population breathing air that exceeds WHO guideline values. The 2024 State of Global Air report ranks PM$_{2.5}$ exposure as the second leading risk factor for mortality, ahead of high blood pressure or smoking. In Bogotá, long-term analyses still show spatially heterogeneous PM$_{2.5}$ hot spots, despite a gradual decline from 15.7~$\mu$g/m$^3$ in 2017 to 13.1~$\mu$g/m$^3$ in 2019 and targeted reductions after the city's Air Plan 2030.
+
+While multiple data sources for air quality information exist, including AQICN (minute-level AQI for over 100 countries), Google Air Quality API (500m-resolution indices), and IQAir AirVisual (calibrated sensor networks), these platforms present significant limitations. They provide raw values without personalization, enforce strict quota limits that complicate city-scale analytics, and generally aggregate data hourly with tiered pricing for higher-volume access. Citizens seeking actionable information face the challenge of navigating multiple fragmented sources, understanding technical indicators, and interpreting how air quality conditions specifically affect their health and daily activities.
+
+This project addresses the gap between abundant raw environmental data and the lack of intuitive, rapid, and personalized access to air quality information. By integrating heterogeneous data sources into a unified platform with real-time dashboards, personalized recommendations, and health alerts, the system aims to empower citizens with actionable insights that directly support daily decision-making regarding outdoor activities, health precautions, and protective measures.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Problem statement}
 \label{sec:intro_prob_art}
-This section describes the investigated problem in detail. You can also have a separate chapter on ``Problem articulation.''  For some projects, you may have a section like ``Research question(s)'' or ``Research Hypothesis'' instead of a section on ``Problem statement.'
+
+Despite the availability of multiple air quality data sources, citizens in Bogotá face significant challenges in accessing intuitive and rapid information about air pollution levels and their health implications. Current platforms require users to:
+
+\begin{itemize}
+    \item Navigate multiple fragmented data sources with inconsistent formats and units
+    \item Interpret technical indicators (PM$_{2.5}$, PM$_{10}$, O$_3$, NO$_2$, etc.) without clear health guidance
+    \item Manually correlate air quality levels with personal health conditions and activities
+    \item Access information through platforms that lack real-time updates or personalization
+    \item Understand complex technical documentation without citizen-oriented interfaces
+\end{itemize}
+
+This fragmentation and lack of personalization creates a barrier between valuable environmental data and actionable health decisions, particularly affecting vulnerable populations such as children, elderly individuals, and people with respiratory conditions who would benefit most from timely, personalized air quality guidance.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Aims and objectives}
 \label{sec:intro_aims_obj}
-Describe the ``aims and objectives'' of your project. 
 
-\textbf{Aims:} The aims tell a reader what you want/hope to achieve at the end of the project. The  aims define your intent/purpose in general terms.  
+\textbf{Aim:} The primary aim of this project is to design and implement a centralized, cloud-ready air quality monitoring platform that integrates real-time data from multiple sources and provides personalized, actionable health recommendations to citizens in Bogotá.
 
-\textbf{Objectives:} The objectives are a set of tasks you would perform in order to achieve the defined aims. The objective statements have to be specific and measurable through the results and outcome of the project.
+\textbf{Objectives:} To achieve this aim, the following specific objectives were established:
+
+\begin{enumerate}
+    \item Design a scalable database architecture using PostgreSQL with TimescaleDB extensions to efficiently store and query time-series air quality data from multiple sources.
+    \item Implement a data ingestion pipeline that collects data from external APIs (AQICN, Google Air Quality, IQAir) at 10-minute intervals with raw storage in MinIO.
+    \item Develop a normalization process that transforms heterogeneous data formats into a unified schema with monthly partitioning for optimal query performance.
+    \item Implement materialized views with concurrent refresh capabilities to accelerate queries and support sub-2-second response times under high load.
+    \item Design and implement a REST + GraphQL API layer to serve real-time dashboards and support diverse client applications.
+    \item Develop a recommendation engine that translates AQI thresholds and user metadata into personalized health advice and protective product suggestions.
+    \item Validate the system architecture against performance requirements including p95 latencies below 2 seconds under 1000 concurrent users.
+    \item Document the complete system architecture, implementation details, and lessons learned for future scalability and multi-region deployments.
+\end{enumerate}
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Solution approach}
-\label{sec:intro_sol} % label of Org section
-Briefly describe the solution approach and the methodology applied in solving the set aims and objectives.
+\label{sec:intro_sol}
 
-Depending on the project, you may like to alter the ``heading'' of this section. Check with you supervisor. Also, check what subsection or any other section that can be added in or removed from this template.
+The solution adopts a modern, cloud-ready architecture based on PostgreSQL as the core data store, extended with TimescaleDB for efficient time-series operations. The approach follows a systematic pipeline architecture that addresses data ingestion, normalization, storage, and delivery:
 
-\subsection{A subsection 1}
-\label{sec:intro_some_sub1}
-You may or may not need subsections here. Depending on your project's needs, add two or more subsection(s). A section takes at least two subsections. 
+\subsection{Data Collection and Ingestion}
+\label{sec:intro_ingestion}
 
-\subsection{A subsection 2}
-\label{sec:intro_some_sub2}
-Depending on your project's needs, add more section(s) and subsection(s).
+A Python-based ingestion service operates on a 10-minute interval cycle, collecting air quality data from three primary external APIs: AQICN, Google Air Quality, and IQAir. Raw payloads are immediately stored in MinIO object storage to preserve original data for audit trails and potential reprocessing. This two-stage approach ensures data durability while allowing the normalization pipeline to operate asynchronously.
 
-\subsubsection{A subsection 1 of a subsection}
-\label{sec:intro_some_subsub1}
-The command \textbackslash subsubsection\{\} creates a paragraph heading in \LaTeX.
+\subsection{Database Architecture and Query Optimization}
+\label{sec:intro_database}
 
-\subsubsection{A subsection 2 of a subsection}
-\label{sec:intro_some_subsub2}
-Write your text here...
+The normalized data is stored in a PostgreSQL database utilizing monthly partitioning strategies to optimize query performance for time-range filters. TimescaleDB hypertables provide automatic time-series optimizations, including compression and continuous aggregates. To achieve the target sub-2-second query latency, the system employs concurrently refreshed materialized views that pre-compute common aggregations and summary statistics. This multi-layered storage strategy balances write throughput for real-time ingestion with read performance for user queries and dashboard rendering.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Summary of contributions and achievements} %  use this section 
-\label{sec:intro_sum_results} % label of summary of results
-Describe clearly what you have done/created/achieved and what the major results and their implications are. 
+\subsection{API Layer and User Services}
+\label{sec:intro_api}
+
+A dual-protocol API layer supports both REST endpoints for simple queries and GraphQL for complex, nested data requirements. This flexibility allows mobile applications, web dashboards, and third-party integrations to efficiently access the data they need. The recommendation engine operates as a separate service that consumes air quality data alongside user profiles (location, activity patterns, health conditions) to generate personalized health advice, protective product suggestions, and cleaner-area navigation guidance during high pollution periods.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Organization of the report} %  use this section
-\label{sec:intro_org} % label of Org section
-Describe the outline of the rest of the report here. Let the reader know what to expect ahead in the report. Describe how you have organized your report. 
+\section{Summary of contributions and achievements}
+\label{sec:intro_sum_results}
 
-\textbf{Example: how to refer a chapter, section, subsection}. This report is organised into seven chapters. Chapter~\ref{ch:lit_rev} details the literature review of this project. In Section~\ref{ch:method}...  % and so on.
+This project makes three primary contributions to the field of environmental data systems and public health informatics. First, it demonstrates an end-to-end PostgreSQL-based architecture that successfully unifies three heterogeneous public APIs through a systematic ingestion, normalization, and storage pipeline. The implementation of TimescaleDB hypertables with monthly city-based partitioning provides a practical model for handling large-scale time-series environmental data with efficient query performance.
 
-\textbf{Note:}  Take care of the word like ``Chapter,'' ``Section,'' ``Figure'' etc. before the \LaTeX~command \textbackslash ref\{\}. Otherwise, a  sentence will be confusing. For example, In \ref{ch:lit_rev} literature review is described. In this sentence, the word ``Chapter'' is missing. Therefore, a reader would not know whether 2 is for a Chapter or a Section or a Figure.  For more information on \textbf{automated tools} to assist in this work, see \Cref{subsec:reftools}.
+Second, the lightweight recommendation engine bridges the gap between raw environmental metrics and citizen-actionable guidance. By translating technical AQI thresholds and pollutant concentrations into color-coded health advice, protective product suggestions, and cleaner-area navigation, the system addresses user stories that emphasize personalized health support rather than merely data visualization.
+
+Third, the architecture targets specific performance metrics designed to meet non-functional requirements including sub-2-second query response times at the 95th percentile under 1000 concurrent users. The use of concurrently refreshed materialized views demonstrates how modern database features can be leveraged to achieve real-time responsiveness without sacrificing data accuracy or resorting to complex distributed streaming frameworks.
+
+The initial deployment focuses on three years (2022-2024) of historical Bogotá air quality data, providing a foundation for future expansion to predictive modeling, multi-region deployments, and integration with additional health and environmental data sources.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Organization of the report}
+\label{sec:intro_org}
+
+The rest of this report is organised as follows:
+
+\begin{enumerate}
+    \item Chapter~\ref{ch:lit_rev} presents a comprehensive literature review covering air quality monitoring systems, time-series database technologies, and real-time data processing architectures relevant to environmental health informatics;
+    \item Chapter~\ref{ch:method} describes the methodology and system design, including the database schema, partitioning strategies, materialized view implementation, API architecture, and recommendation engine logic;
+    \item Chapter 4 illustrates the implementation details, including the Python ingestion service, normalization pipeline, database configuration, and API endpoints;
+    \item Chapter 5 presents the testing and validation approach, including performance benchmarking, load testing methodology, and compliance verification against functional and non-functional requirements;
+    \item Chapter 6 discusses the results, analyzing query performance, system scalability, and effectiveness of the recommendation engine;  and
+    \item Finally, Chapter~\ref{ch:con} concludes the report, summarizing key findings, discussing limitations, and outlining future work including predictive modeling capabilities and multi-region deployment strategies.
+\end{enumerate}
 
