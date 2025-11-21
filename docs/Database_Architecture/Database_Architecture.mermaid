@@ -1,44 +1,71 @@
-flowchart TD
-  subgraph Clients
-    Citizen[Citizen&nbsp;/&nbsp;Mobile&nbsp;Web]
-    Researcher[Researcher&nbsp;/&nbsp;BI Tool]
-    Admin[Technical&nbsp;Admin]
-  end
+graph TD
+    %% CLIENTS
+    subgraph Clients
+        CitizenWeb[Citizen Web Client]
+        Researcher[Researcher Client]
+        Admin[Technical Admin Client]
+    end
 
-  subgraph API-Layer
-    api_main(API Server)
-    admin_api(API Admin)
-  end
+    %% WEB FRONTEND
+    subgraph WebLayer
+        WebFrontend[Web Frontend Application]
+    end
 
-  subgraph Data-Core
-    PG[(PostgreSQL)]
-    MV{{Materialised<br/>Views}}
-    TSDB[(TimescaleDB hypertable<br/>extension)]  
-  end
+    %% API LAYER
+    subgraph APILayer
+        ApiPublic[Public REST API]
+        ApiAdmin[Admin REST API]
+    end
 
-  subgraph ETL
-    Ingestor[Python Ingestor<br/>10-minute interval]
-    Normalizer[Light Normalizer<br/>&amp; field mapping]
-  end
+    %% DATA CORE
+    subgraph DataLayer
+        PG[PostgreSQL Operational and Analytics]
+        NoSQL[NoSQL Document Store]
+    end
 
-  MinIO[(MinIO “raw-airquality”)]
-  Grafana[Grafana]
+    %% BATCH JOBS
+    subgraph BatchJobs
+        ExternalAPI[External Air Quality APIs]
+        IngestionJob[Ingestion Job Scheduled]
+        Normalizer[Normalizer and Validator]
+        DailyAgg[Daily Aggregation Job]
+    end
 
-  api_main -->|SQL| PG
-  api_main <-->|SQL| MV
+    %% OBSERVABILITY
+    subgraph Observability
+        AppLogs[Application Logs]
+    end
 
-  admin_api --> PG
+    %% CLIENTS -> WEB
+    CitizenWeb --> WebFrontend
+    Researcher --> WebFrontend
+    Admin --> WebFrontend
 
-  Citizen -->|REST JSON| api_main
-  Researcher -->|GraphQL / CSV| api_main
-  Admin --> |REST| admin_api
-  Admin -. queries .-> Grafana
+    %% WEB -> API
+    WebFrontend -->|REST JSON| ApiPublic
+    WebFrontend -->|REST JSON Admin| ApiAdmin
 
+    %% API -> DATA
+    ApiPublic --> PG
+    ApiPublic --> NoSQL
+    ApiAdmin --> PG
+    ApiAdmin --> NoSQL
 
-  Ingestor --> MinIO
-  Ingestor --> Normalizer
-  Normalizer --> PG
-  PG -. stats .-> Grafana
+    %% INGESTION FLOW
+    ExternalAPI --> IngestionJob
+    IngestionJob --> Normalizer
+    Normalizer --> PG
 
-  PG --> TSDB
-  PG <--> MV
+    %% DAILY AGGREGATION
+    DailyAgg --> PG
+
+    %% API READS
+    ApiPublic -. Read current and daily stats .-> PG
+    ApiPublic -. Read preferences and dashboards .-> NoSQL
+
+    %% LOGS
+    ApiPublic --> AppLogs
+    ApiAdmin --> AppLogs
+    IngestionJob --> AppLogs
+    Normalizer --> AppLogs
+    DailyAgg --> AppLogs
