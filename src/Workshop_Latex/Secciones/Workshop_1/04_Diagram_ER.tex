@@ -1,61 +1,127 @@
-\section{Initial Database Architecture}
-\subsubsection*{Diagram ER}
+% ER diagrams and entity overview updated based on docs/Diagram_ER/Diagram_ER.dbml
+% See _temp_corrections/ER_Model_changes_spec.md for details.
 
-\begin{figure}[H]
+\section{Initial Database Architecture}
+\subsubsection*{Data Model Overview}
+
+The Air Quality Platform's data model is organized into four logical components that reflect different functional areas of the system. The relational schema handles structured, long-lived business data (stations, readings, users, alerts, recommendations, and reports), while a separate NoSQL store manages highly dynamic user-specific configurations. This separation ensures clean responsibilities and optimal performance for each data type.
+
+The four main components are:
+
+\begin{itemize}
+  \item \textbf{Geospatial \& Monitoring:} Manages monitoring stations, pollutants, and raw air quality measurements.
+  \item \textbf{Users \& Access Control:} Handles user accounts, roles, and permissions.
+  \item \textbf{Alerts \& Recommendations:} Supports user-configured alerts and health-oriented suggestions.
+  \item \textbf{Reporting \& Analytics:} Provides operational reports and analytical aggregations for business intelligence.
+\end{itemize}
+
+\subsubsection*{Relational Model – ER Diagrams by Component}
+
+\paragraph{Geospatial \& Monitoring}
+
+\begin{figure}[h]
   \centering
-  \includegraphics[width=\linewidth]{Imagenes/ER_Diagram.png}
-  \caption{ER Diagram}
+  \includegraphics[width=0.9\textwidth]{Imagenes/ER_Geospatial.png}
+  \caption{ER diagram – Geospatial \& Monitoring component}
+  \label{fig:er_geospatial}
 \end{figure}
 
-\begin{longtable}{|p{3cm}|p{2cm}|p{6cm}|p{4cm}|}
-\hline
-\textbf{Component} & \textbf{Entity Name} & \textbf{Description} & \textbf{Attributes} \\
-\hline
-\endfirsthead
+This component contains the core operational entities for air quality monitoring. The \texttt{Station} table stores metadata and geographic coordinates for each monitoring station. The \texttt{Pollutant} table catalogs different pollutants (e.g., PM2.5, NO$_2$, O$_3$) with their measurement units. The \texttt{AirQualityReading} table captures raw measurements from stations, linking each reading to a specific station and pollutant. The \texttt{MapRegion} table supports geospatial filtering and visualization, optionally using PostGIS geometry types for advanced mapping features.
 
-\hline
-\textbf{Component} & \textbf{Entity Name} & \textbf{Description} & \textbf{Attributes} \\
-\hline
-\endhead
+\paragraph{Users \& Access Control}
 
-Geospatial Layer & Station & Monitoring station metadata and location. & id (PK), name, latitude, longitude, city, country \\
-\hline
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.9\textwidth]{Imagenes/ER_Users_Access.png}
+  \caption{ER diagram – Users \& Access Control component}
+  \label{fig:er_users_access}
+\end{figure}
 
-Geospatial Layer & AirQuality Reading & Air quality measurements from stations. & id (PK), station\_id (FK), datetime, pollutant\_type, value, aqi \\ 
-\hline
+This component implements role-based access control (RBAC) for the platform. The \texttt{AppUser} table (renamed from \texttt{User} to avoid conflicts with PostgreSQL reserved words) stores registered users with basic profile information and a reference to their assigned role. The \texttt{Role} and \texttt{Permission} tables define distinct user roles (e.g., Admin, Analyst, Citizen) and granular permissions. The \texttt{RolePermission} junction table establishes a many-to-many relationship, allowing flexible permission assignment to roles.
 
-Geospatial Layer & Pollutant & Catalog of pollutants and their units. & id (PK), name, unit, description \\ 
-\hline
+\paragraph{Alerts \& Recommendations}
 
-Customer Layer & User & Platform user and profile settings. & id (PK), name, email, password\_hash, preferences, location \\ 
-\hline
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.9\textwidth]{Imagenes/ER_Alerts_Recommendations.png}
+  \caption{ER diagram – Alerts \& Recommendations component}
+  \label{fig:er_alerts_recommendations}
+\end{figure}
 
-Recommendation Engine & Alert & Alert configurations and triggered events. & id (PK), user\_id (FK), pollutant\_type, threshold, method, triggered\_at \\ 
-\hline
+This component supports personalized user engagement. The \texttt{Alert} table stores threshold-based alert configurations created by users (e.g., notify when PM2.5 exceeds 50 $\mu$g/m$^3$), with fields for the pollutant, threshold value, delivery method (email, SMS), and trigger timestamp. The \texttt{Recommendation} table contains health-oriented suggestions generated based on pollution levels and user location. The \texttt{ProductRecommendation} table links recommendations to certified protection products (e.g., face masks, air purifiers), providing actionable guidance during high pollution events.
 
-Recommendation Engine & Recommen- dation & User-specific recommendations based on AQI. & id (PK), user\_id (FK), location, suggestion, pollution\_level, created\_at \\ 
-\hline
+\paragraph{Reporting \& Analytics}
 
-Recommendation Engine & Report & Generated analytical reports. & id (PK), user\_id (FK), created\_at, parameters, file\_path \\ 
-\hline
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.9\textwidth]{Imagenes/ER_Reporting_Analytics.png}
+  \caption{ER diagram – Reporting \& Analytics component}
+  \label{fig:er_reporting_analytics}
+\end{figure}
 
-Geospatial Layer & MapRegion & Regions used for geospatial filtering and navigation. & id (PK), name, geom (geometry) \\ 
-\hline
+This component bridges operational and analytical workloads. The \texttt{Report} table stores metadata for user-generated reports, including parameters (city, date range, station, pollutant) and file paths for exported documents. The \texttt{AirQualityDailyStats} table is an analytical entity that contains pre-aggregated daily statistics per station and pollutant (average, maximum, minimum AQI values, and reading counts). This aggregation table supports efficient business intelligence queries and dashboard visualizations without repeatedly scanning the raw \texttt{AirQualityReading} table.
 
-Customer Layer & Dashboard Config & User preferences for dashboard visualizations. & id (PK), user\_id (FK), settings\_json, last\_updated \\ 
-\hline
+\subsubsection*{NoSQL Data Model for Preferences and Dashboards}
 
-Recommendation Engine & Product Recommen- dation & Suggested certified products during high pollution levels. & id (PK), recommendation\_id (FK), product\_name, product\_type, product\_url \\ 
-\hline
+To avoid storing semi-structured, frequently changing configuration data in the relational schema, the platform uses a separate NoSQL document store (e.g., MongoDB or Azure Cosmos DB) for two specific collections:
 
-Customer Layer & Role & Defines user roles in the platform (e.g., Admin, Citizen, Analyst). & id (PK), name (unique) \\ 
-\hline
+\begin{itemize}
+  \item \textbf{user\_preferences:} Stores per-user settings such as UI theme (light/dark mode), default city for dashboard views, favorite pollutants to monitor, notification channels, language preferences, and other customizable options. This data changes frequently based on user interactions and does not require relational integrity constraints.
+  
+  \item \textbf{dashboard\_configs:} Stores dashboard layout configurations, including widget positions, visibility settings, chart types, and time range preferences. This allows users to personalize their analytics dashboards without impacting the relational schema.
+\end{itemize}
 
-Customer Layer & Permission & Specifies distinct permissions that can be granted to roles. & id (PK), name (unique) \\
-\hline
+This design removes JSON fields from the relational model (which would complicate querying and schema evolution) and leverages the flexibility of NoSQL databases for schema-less, rapidly evolving configuration data. The relational database remains responsible for long-lived, structured business data with strong consistency requirements.
 
-Customer Layer & Role Permission & Associates roles with permissions in a many-to-many relationship. & role\_id (FK), permission\_id (FK), PRIMARY KEY (role\_id, permission\_id) \\ 
-\hline
+\subsubsection*{Entity Overview}
 
-\caption{Entities}
-\end{longtable}
+The following table summarizes all entities in the data model, grouped by component:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{|p{3.2cm}|p{2.8cm}|p{4.5cm}|p{3cm}|p{1.5cm}|}
+\hline
+\textbf{Component} & \textbf{Entity} & \textbf{Description} & \textbf{Main Attributes} & \textbf{Type} \\
+\hline
+\hline
+Geospatial \& Monitoring & Station & Physical air quality monitoring station & id, name, latitude, longitude, city, region\_id & Operational \\
+\hline
+Geospatial \& Monitoring & Pollutant & Catalog of pollutants and measurement units & id, name, unit, description & Operational \\
+\hline
+Geospatial \& Monitoring & AirQuality-Reading & Raw air quality measurements & id, station\_id, pollutant\_id, datetime, value, aqi & Operational \\
+\hline
+Geospatial \& Monitoring & MapRegion & Geographic regions for filtering and visualization & id, name, geom & Operational \\
+\hline
+\hline
+Users \& Access Control & AppUser & Registered platform user & id, name, email, password\_hash, role\_id & Operational \\
+\hline
+Users \& Access Control & Role & User role definition & id, name & Operational \\
+\hline
+Users \& Access Control & Permission & Granular permission definition & id, name & Operational \\
+\hline
+Users \& Access Control & Role-Permission & Many-to-many role-permission mapping & role\_id, permission\_id & Operational \\
+\hline
+\hline
+Alerts \& Recommendations & Alert & Threshold-based user alerts & id, user\_id, pollutant\_id, threshold, method & Operational \\
+\hline
+Alerts \& Recommendations & Recommen-dation & Health-oriented suggestions based on AQI & id, user\_id, location, pollution\_level, message & Operational \\
+\hline
+Alerts \& Recommendations & Product-Recommen-dation & Suggested protection products & id, recommendation\_id, product\_name, product\_type & Operational \\
+\hline
+\hline
+Reporting \& Analytics & Report & User-generated report metadata & id, user\_id, city, start\_date, end\_date, file\_path & Operational \\
+\hline
+Reporting \& Analytics & AirQuality-DailyStats & Daily aggregated air quality statistics & station\_id, pollutant\_id, date, avg\_aqi, max\_aqi & Analytical \\
+\hline
+\hline
+Configuration (NoSQL) & user\_preferences & Per-user UI and notification settings & theme, default\_city, favorite\_pollutants & Config \\
+\hline
+Configuration (NoSQL) & dashboard\_configs & Dashboard layout and widget configurations & widgets, positions, visibility & Config \\
+\hline
+\end{tabular}
+\caption{Entity overview by component and type}
+\label{tab:entity_overview}
+\end{table}
+
+The \textit{Operational} entities handle transactional workloads with strong consistency requirements, while the \textit{Analytical} entity (\texttt{AirQualityDailyStats}) supports business intelligence queries. The \textit{Config} entities reside in the NoSQL store and provide flexible schema evolution for user preferences and dashboard layouts.
