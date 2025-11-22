@@ -21,3 +21,19 @@ In summary, the main categories of improvements include:
 \end{itemize}
 
 These changes ensure that the functional requirements are not only aligned with the instructor's feedback but also consistent with the system architecture, data ingestion pipeline, and database design presented in Workshop 2, setting a solid foundation for the concurrency, distribution, and performance analysis in Workshop 3.
+
+\subsubsection*{Non-Functional Requirements Refinement}
+
+In addition to the functional requirements, the non-functional requirements (NFR1–NFR10) were systematically revised to eliminate unrealistic expectations and establish measurable performance targets tied to plausible workloads. The original NFRs included overly ambitious technical claims—such as continuous 24/7 streaming ingestion, distributed big-data storage infrastructure, and multi-region geographic redundancy—that are not achievable within the scope of a course project. The revised NFRs now reflect a more pragmatic approach while maintaining clear quality attributes for performance, reliability, and user experience.
+
+Key improvements to the non-functional requirements include:
+
+\begin{itemize}[noitemsep]
+    \item \textbf{Realistic data ingestion:} NFR2 was revised to specify automated periodic ingestion (e.g., every few minutes or hourly) instead of continuous streaming, aligning with the actual update frequency of external air quality APIs.
+    \item \textbf{Workload-driven performance targets:} NFR1, NFR4, and NFR6 were clarified to tie query performance, report generation, and UI load times to typical usage scenarios and expected data volumes, rather than arbitrary thresholds on massive datasets.
+    \item \textbf{Simplified storage architecture:} NFR3 was reworded to focus on properly dimensioned and indexed storage for the expected volume of readings and users, removing the requirement for a distributed big-data infrastructure.
+    \item \textbf{Basic fault tolerance:} NFR7 now specifies fault tolerance through regular backups and recovery procedures, explicitly excluding multi-region geographic redundancy as out of scope for the course project.
+    \item \textbf{Horizontal scalability as a design goal:} NFR8 was reclassified as a future requirement, acknowledging that the system should be designed with horizontal scaling in mind (e.g., read replicas, sharding) but that a multi-node deployment is not mandatory for the baseline implementation.
+\end{itemize}
+
+These refinements ensure that the non-functional requirements are consistent with the revised architecture and provide a realistic framework for evaluating system performance, concurrency control, and fault tolerance in the context of this academic project.

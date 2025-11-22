@@ -49,37 +49,40 @@ FR12 & Functional & The system must support geographic search for air quality da
 FR13 & Functional & The system must provide a responsive web interface that works correctly on mobile, tablet, and desktop devices. & US16 \\ 
 \hline
 
-FR14 & Functional & \textit{(Optional)} The system may allow users to share links to selected air quality views or reports on social media platforms, using simple shareable URLs. & US17 \\ 
+FR14 & Functional & \textit{(Optional)} The system may allow users to share links to selected air quality views or reports on social media platforms, using simple shareable URLs. & US17 \\
 \hline
 
-NFR1 & Non-Functional & Queries on large datasets (≥1 million records) must execute in under 2 seconds 95\% of the time. & US3, US12 \\ 
+% Non-functional requirements (NFR1–NFR10) updated according to instructor feedback.
+% See _temp_corrections/NFR_changes_spec.md
+
+NFR1 & Non-Functional & Queries on air quality data (for typical usage scenarios and expected data volumes) must execute in under 2 seconds for at least 95\% of requests, under normal load conditions. & US3, US12 \\
 \hline
 
-NFR2 & Non-Functional & The system must support continuous streaming data ingestion 24/7 without manual intervention. & US1, US14 \\ 
+NFR2 & Non-Functional & The system must support automated periodic ingestion of air quality data without manual intervention, according to a configurable schedule (e.g., every few minutes or hourly), instead of requiring continuous streaming 24/7. & US1, US14 \\ 
 \hline
 
-NFR3 & Non-Functional & Data storage must be distributed and optimized for big data processing. & US1, US3 \\ 
+NFR3 & Non-Functional & Data storage must be dimensioned, indexed, and organized to handle the expected volume of readings and users over the project's time horizon, and to allow future partitioning if needed. & US1, US3 \\ 
 \hline
 
-NFR4 & Non-Functional & Customized reports must be generated in under 10 seconds. & US5 \\ 
+NFR4 & Non-Functional & Customized reports with filters on date, location, and indicators must be generated in under 10 seconds for typical workloads. & US5 \\ 
 \hline
 
-NFR5 & Non-Functional & The recommendation engine should be updated every 10 minutes throughout the day with air quality data. & US8, US10 \\ 
+NFR5 & Non-Functional & The recommendation logic (for simple rule-based recommendations) should be updated at least every 10 minutes, aligned with the update frequency of the external air quality APIs used by the system. & US8, US10 \\ 
 \hline
 
-NFR6 & Non-Functional & Air quality data and visualizations must load in less than 2 seconds for 95\% of user requests. & US12 \\ 
+NFR6 & Non-Functional & Air quality data views and visualizations must load in less than 2 seconds for at least 95\% of user requests, under normal conditions. & US12 \\ 
 \hline
 
-NFR7 & Non-Functional & The system architecture must include fault tolerance and geographic redundancy. & US14 \\ 
+NFR7 & Non-Functional & The system architecture must provide basic fault tolerance, ensuring that no permanent data loss occurs in case of a single node or instance failure, using regular backups and recovery procedures. Geographic redundancy across multiple regions is explicitly out of scope for the course project. & US14 \\ 
 \hline
 
-NFR8 & Non-Functional & The system must scale horizontally to support growth in data volume and users. & US13, US14 \\ 
+NFR8 & Non-Functional & The system should be designed so that it can scale horizontally in the future (e.g., by adding read replicas or sharding), but a multi-node deployment is not required for the baseline course implementation (considered a future scalability goal). & US13, US14 \\ 
 \hline
 
-NFR9 & Non-Functional & The system UI must function correctly on all major browsers and operating systems without errors. & US16 \\ 
+NFR9 & Non-Functional & The system's web user interface must function correctly on all major browsers and operating systems commonly used by the target audience, without critical errors. & US16 \\ 
 \hline
 
-NFR10 & Non-Functional & Data consistency and user personalization must be preserved across all user devices. & US16 \\ 
+NFR10 & Non-Functional & Data consistency and user personalization (e.g., preferences and dashboard configuration) must be preserved across all user devices, assuming that users log in with the same account. & US16 \\ 
 \hline
 
 \caption{Requirements}
@@ -87,13 +90,15 @@ NFR10 & Non-Functional & Data consistency and user personalization must be prese
 
 \subsubsection*{Non-Functional Requirements Justification}
 
-\textbf{NFR2 (24/7 streaming ingestion):} Air quality monitoring requires continuous data collection since pollution levels fluctuate throughout the day and immediate detection of hazardous conditions is critical for public health.
+\textbf{NFR2 (Automated periodic ingestion):} Air quality monitoring requires regular automated data collection since pollution levels fluctuate throughout the day. Periodic ingestion (e.g., every few minutes or hourly) aligns with the update frequency of external APIs while maintaining data freshness for timely detection of hazardous conditions.
 
 \textbf{NFR4 (10 seconds report generation):} Complex reports with multiple filters and large datasets require processing time, but 10 seconds maintains user engagement while allowing for comprehensive data analysis.
 
 \textbf{NFR5 (10 minutes update frequency):} Air quality APIs from external sources typically update their information every 10 minutes to 1 hour, making more frequent updates unnecessary and resource-intensive.
 
-\textbf{NFR6 (2 seconds data loading):} Critical safety information like air quality alerts must be delivered quickly to enable timely user decisions about outdoor activities and health precautions.
+\textbf{NFR6 (Page and visualization load time):} Critical safety information like air quality alerts must be delivered quickly through responsive UI loading to enable timely user decisions about outdoor activities and health precautions.
+
+\textbf{NFR7 (Basic fault tolerance):} While multi-region geographic redundancy is beyond the scope of this course project, basic fault tolerance through regular backups and recovery procedures ensures data integrity and system reliability at a reasonable level for an academic implementation.
 
 \subsubsection*{Future Functional Requirements}
 
