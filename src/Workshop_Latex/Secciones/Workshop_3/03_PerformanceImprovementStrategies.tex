@@ -2,7 +2,7 @@
 
 The goal is not to introduce heavy distributed technologies prematurely, but to identify realistic optimizations that match the system’s workload, data characteristics and projected growth.
 
-\subsection{1. Partitioning of Operational and Analytical Data}
+\subsection{Partitioning of Operational and Analytical Data}
 
 \subsubsection*{Rationale}
 
@@ -36,7 +36,7 @@ If the platform expands beyond a single city or region, additional partitions ca
     \item Excessive partitions (hundreds) may degrade planning time if not managed.
 \end{itemize}
 
-\subsection{2. Read Replicas for Workload Separation}
+\subsection{Read Replicas for Workload Separation}
 
 \subsubsection*{Rationale}
 
@@ -75,7 +75,7 @@ The primary node focuses exclusively on:
     \item Additional monitoring is required to detect replica staleness.
 \end{itemize}
 
-\subsection{3. Parallel Execution for Analytical Queries}
+\subsection{Parallel Execution for Analytical Queries}
 
 \subsubsection*{Rationale}
 
@@ -107,7 +107,7 @@ Parallel plans distribute segments of the scan across multiple CPU cores, reduci
     \item Benefits depend on server CPU availability.
 \end{itemize}
 
-\subsection{4. Optimized Batch Ingestion and Daily Aggregation}
+\subsection{Optimized Batch Ingestion and Daily Aggregation}
 
 \subsubsection*{Rationale}
 
@@ -130,7 +130,7 @@ The ingestion workflow (external APIs → ingestion job → normalizer → Postg
     \item Stable ingestion latency regardless of traffic patterns.
 \end{itemize}
 
-\subsection{5. Caching of Hot Data at the API Layer}
+\subsection{Caching of Hot Data at the API Layer}
 
 \subsubsection*{Rationale}
 
@@ -153,7 +153,7 @@ Use a short-lived in-memory cache (within the API server) to store:
     \item Improves responsiveness for high-traffic endpoints.
 \end{itemize}
 
-\subsection{6. Summary of Proposed Strategies}
+\subsection{Summary of Proposed Strategies}
 
 \begin{center}
 \begin{tabular}{|p{5cm}|p{5cm}|p{5cm}|}
