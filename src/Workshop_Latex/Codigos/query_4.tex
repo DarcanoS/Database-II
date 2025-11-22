@@ -1,12 +1,13 @@
-SELECT 
-    s.city,
-    s.country,
-    COUNT(DISTINCT s.id) AS station_count,
-    COUNT(DISTINCT aqr.pollutant_type) AS pollutant_types_monitored,
-    MAX(aqr.datetime) AS latest_reading,
-    COUNT(aqr.id) AS readings_last_24h
+SELECT
+  s.city,
+  s.country,
+  COUNT(DISTINCT s.id)         AS station_count,
+  COUNT(DISTINCT aqr.pollutant_id) AS pollutant_types_monitored,
+  MAX(aqr.datetime)            AS latest_reading,
+  COUNT(aqr.id)                AS readings_last_24h
 FROM Station s
-LEFT JOIN AirQualityReading aqr ON s.id = aqr.station_id 
-    AND aqr.datetime >= NOW() - INTERVAL '24 hours'
+LEFT JOIN AirQualityReading aqr
+       ON s.id = aqr.station_id
+      AND aqr.datetime >= NOW() - INTERVAL '24 hours'
 GROUP BY s.city, s.country
 ORDER BY s.country, s.city, readings_last_24h DESC;

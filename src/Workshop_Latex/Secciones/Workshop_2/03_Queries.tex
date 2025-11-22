@@ -1,6 +1,9 @@
+% Query examples updated to match the revised data model and to include NoSQL usage.
+% See _temp_corrections/Queries_changes_spec.md for details.
+
 \section{Query Proposals}
 
-This section describes the purpose of each example SQL query proposed in the architecture, linking them to the functional and performance requirements of the system. Only SQL is used, as the only tool that explicitly allows queries by code is Postgres.
+This section describes the purpose of each example query proposed in the architecture, linking them to the functional and performance requirements of the system. The examples below illustrate both SQL queries over the relational schema and NoSQL queries over the configuration store. SQL is used for air quality readings, alerts and recommendations, while NoSQL is used for user preferences and dashboard layouts.
 
 \subsection*{1. Latest Air Quality Readings per Station}
 
@@ -22,7 +25,7 @@ This section describes the purpose of each example SQL query proposed in the arc
 \inputminted[linenos]{sql}{Codigos/query_2.tex}
 \end{listing}
 
-\textbf{Purpose:} This query supports longitudinal trend analysis by computing average air quality values per month for a specific pollutant. It enables researchers and public policy analysts to track pollution evolution over time (e.g., US2, US5, US7).
+\textbf{Purpose:} This query supports longitudinal trend analysis by computing average air quality values per month for a specific pollutant. It leverages the analytical table \texttt{AirQualityDailyStats} to compute monthly averages efficiently without scanning all raw readings. This enables researchers and public policy analysts to track pollution evolution over time (e.g., US2, US5, US7).
 
 \textbf{Output:} Returns a time series of average pollutant concentrations and AQI values by month for the last three years in the specified city.
 
@@ -34,9 +37,9 @@ This section describes the purpose of each example SQL query proposed in the arc
 \inputminted[linenos]{sql}{Codigos/query_3.tex}
 \end{listing}
 
-\textbf{Purpose:} This query provides insights into user alert patterns and configurations, helping administrators understand which pollution thresholds are most frequently triggered and how users interact with the alert system (e.g., US9, US14).
+\textbf{Purpose:} This query analyzes alert patterns by counting how many times alerts were triggered in the last 7 days per user and pollutant. It joins user alert configurations with actual air quality readings that exceeded the configured AQI thresholds, helping administrators understand which pollution thresholds are most frequently triggered and how users interact with the alert system (e.g., US9, US14).
 
-\textbf{Output:} Returns user alert configurations along with the count of triggered alerts in the last 7 days, grouped by user and pollutant type.
+\textbf{Output:} Returns user name, pollutant name, trigger count, and first/last trigger timestamps for active alerts in the last 7 days, ordered by frequency.
 
 \subsection*{4. Station Coverage and Data Completeness}
 
@@ -61,5 +64,29 @@ This section describes the purpose of each example SQL query proposed in the arc
 \textbf{Purpose:} This query analyzes the recommendation engine's output and user engagement with suggested actions and products, helping optimize the personalization algorithms (e.g., US8, US10, US11).
 
 \textbf{Output:} Returns user recommendation history including location, pollution level, suggestions, and associated product recommendations from the last 30 days.
+
+\subsection*{6. Retrieving user preferences from the NoSQL store}
+
+\begin{listing}[H]
+\caption{Query User Preferences (NoSQL)}
+\label{code:mongo_query1}
+\inputminted[linenos]{json}{Codigos/mongo_query1.tex}
+\end{listing}
+
+\textbf{Purpose:} This query retrieves the preference document for a given user from the \texttt{user\_preferences} collection, including notification settings and default city. It demonstrates how the NoSQL store is used to manage user-specific configuration that changes frequently and has a flexible schema.
+
+\textbf{Output:} Returns the configuration document for that user, which is used by the web frontend to personalize alerts and default views.
+
+\subsection*{7. Retrieving dashboard configurations from the NoSQL store}
+
+\begin{listing}[H]
+\caption{Query Dashboard Configurations (NoSQL)}
+\label{code:mongo_query2}
+\inputminted[linenos]{json}{Codigos/mongo_query2.tex}
+\end{listing}
+
+\textbf{Purpose:} This query finds dashboard configurations where the user has enabled a pollutant trend widget for a specific pollutant. It illustrates how the NoSQL store supports flexible widget configurations and user interface customization.
+
+\textbf{Output:} Returns the corresponding \texttt{dashboard\_configs} documents, which drive the layout and widgets rendered in the web frontend.
 
 \newpage

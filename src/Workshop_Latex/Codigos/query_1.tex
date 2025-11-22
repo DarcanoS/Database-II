@@ -1,19 +1,29 @@
-WITH LatestReadings AS (
-    SELECT 
-        aqr.station_id,
-        aqr.pollutant_type,
-        aqr.aqi,
-        aqr.datetime,
-        ROW_NUMBER() OVER (PARTITION BY aqr.station_id, aqr.pollutant_type 
-        ORDER BY aqr.datetime DESC) as rn
-    FROM AirQualityReading aqr
-    JOIN Station s ON aqr.station_id = s.id
-    WHERE s.city = 'Bogota'
+WITH latest_readings AS (
+  SELECT
+    aqr.id,
+    aqr.station_id,
+    aqr.pollutant_id,
+    aqr.value,
+    aqr.aqi,
+    aqr.datetime,
+    ROW_NUMBER() OVER (
+      PARTITION BY aqr.station_id, aqr.pollutant_id
+      ORDER BY aqr.datetime DESC
+    ) AS rn
+  FROM AirQualityReading aqr
+  JOIN Station s ON aqr.station_id = s.id
+  WHERE s.city = 'Bogota'
 )
-SELECT 
-    pollutant_type,
-    AVG(aqi) as avg_aqi,
-    MAX(datetime) as last_updated
-FROM LatestReadings
-WHERE rn = 1
-GROUP BY pollutant_type
+SELECT
+  s.name         AS station_name,
+  s.latitude,
+  s.longitude,
+  p.name         AS pollutant_name,
+  lr.value,
+  lr.aqi,
+  lr.datetime    AS last_updated
+FROM latest_readings lr
+JOIN Station s   ON lr.station_id = s.id
+JOIN Pollutant p ON lr.pollutant_id = p.id
+WHERE lr.rn = 1
+ORDER BY s.name, p.name;

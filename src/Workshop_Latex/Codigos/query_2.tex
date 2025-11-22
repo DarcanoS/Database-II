@@ -1,11 +1,12 @@
-SELECT 
-    DATE_TRUNC('month', aqr.datetime) as month,
-    AVG(aqr.value) as avg_value
-FROM AirQualityReading aqr
-JOIN Station s ON aqr.station_id = s.id
-JOIN Pollutant p ON aqr.pollutant_type = p.id
+SELECT
+  date_trunc('month', stats.date) AS month,
+  AVG(stats.avg_value)           AS avg_value,
+  AVG(stats.avg_aqi)             AS avg_aqi
+FROM AirQualityDailyStats stats
+JOIN Station s   ON stats.station_id   = s.id
+JOIN Pollutant p ON stats.pollutant_id = p.id
 WHERE s.city = 'Medellin'
-AND p.name = 'PM2.5'
+  AND p.name = 'PM2.5'
 GROUP BY month
 ORDER BY month DESC
-LIMIT 36
+LIMIT 36;

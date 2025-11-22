@@ -2,7 +2,7 @@
 % This subsection summarizes the changes applied to FR1–FR14 based on instructor feedback.
 % See _temp_corrections/FR_changes_spec.md and Requirements_FR_corrections.csv for details.
 
-\subsection{Improvements to Workshop 2}
+\section{Improvements to Workshop 2}
 
 Following the instructor's feedback on Workshop 2, the functional requirements (FR1–FR14) of the Air Quality Analysis Platform were systematically revised and reorganized to better align with the scope and expectations of a realistic course project. The primary goal of this refinement was to eliminate overly ambitious features, establish clear boundaries between baseline and optional functionality, and ensure that all requirements remain traceable to the revised architecture and data model presented in Workshop 2.
 
@@ -21,6 +21,8 @@ In summary, the main categories of improvements include:
 \end{itemize}
 
 These changes ensure that the functional requirements are not only aligned with the instructor's feedback but also consistent with the system architecture, data ingestion pipeline, and database design presented in Workshop 2, setting a solid foundation for the concurrency, distribution, and performance analysis in Workshop 3.
+
+In addition, the query examples from Workshop~2 were revised to match the updated schema and analytics design. The SQL snippets now use the \texttt{AirQualityDailyStats} table for historical analysis, the renamed \texttt{AppUser} entity, and the explicit \texttt{Alert} relationships for threshold-based notifications. Two NoSQL examples were also added to illustrate how the configuration store (\texttt{user\_preferences} and \texttt{dashboard\_configs}) is queried in practice, addressing the instructor's request for concrete NoSQL usage.
 
 \subsubsection*{Non-Functional Requirements Refinement}
 

@@ -1,10 +1,18 @@
-SELECT 
-    s.name as station_name,
-    aqr.datetime,
-    aqr.pollutant_type,
-    aqr.value,
-    aqr.aqi
-FROM AirQualityReading aqr
-JOIN Station s ON aqr.station_id = s.id
-ORDER BY aqr.datetime DESC
-LIMIT 10
+SELECT
+  u.name        AS user_name,
+  p.name        AS pollutant_name,
+  COUNT(*)      AS trigger_count,
+  MIN(aqr.datetime) AS first_triggered_at,
+  MAX(aqr.datetime) AS last_triggered_at
+FROM Alert a
+JOIN AppUser u         ON a.user_id      = u.id
+JOIN Station s         ON a.station_id   = s.id
+JOIN Pollutant p       ON a.pollutant_id = p.id
+JOIN AirQualityReading aqr
+  ON aqr.station_id    = a.station_id
+ AND aqr.pollutant_id  = a.pollutant_id
+ AND aqr.aqi           >= a.threshold_aqi
+ AND aqr.datetime      >= NOW() - INTERVAL '7 days'
+WHERE a.is_active = TRUE
+GROUP BY u.name, p.name
+ORDER BY trigger_count DESC;
