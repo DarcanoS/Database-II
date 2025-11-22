@@ -17,47 +17,26 @@ The four main components are:
 
 \subsubsection*{Relational Model – ER Diagrams by Component}
 
-\paragraph{Geospatial \& Monitoring}
-
 \begin{figure}[h]
   \centering
-  \includegraphics[width=0.9\textwidth]{Imagenes/ER_Diagram.png}
-  \caption{ER diagram – Geospatial \& Monitoring component}
-  \label{fig:er_geospatial}
+  \includegraphics[width=0.9\textwidth]{Imagenes/ER_Diagram.pdf}
+  \caption{Complete ER diagram for the Air Quality Platform}
+  \label{fig:er_complete}
 \end{figure}
+
+\paragraph{Geospatial \& Monitoring}
 
 This component contains the core operational entities for air quality monitoring. The \texttt{Station} table stores metadata and geographic coordinates for each monitoring station. The \texttt{Pollutant} table catalogs different pollutants (e.g., PM2.5, NO$_2$, O$_3$) with their measurement units. The \texttt{AirQualityReading} table captures raw measurements from stations, linking each reading to a specific station and pollutant. The \texttt{MapRegion} table supports geospatial filtering and visualization, optionally using PostGIS geometry types for advanced mapping features.
 
 \paragraph{Users \& Access Control}
 
-\begin{figure}[h]
-  \centering
-  \includegraphics[width=0.9\textwidth]{Imagenes/ER_Diagram.png}
-  \caption{ER diagram – Users \& Access Control component}
-  \label{fig:er_users_access}
-\end{figure}
-
 This component implements role-based access control (RBAC) for the platform. The \texttt{AppUser} table (renamed from \texttt{User} to avoid conflicts with PostgreSQL reserved words) stores registered users with basic profile information and a reference to their assigned role. The \texttt{Role} and \texttt{Permission} tables define distinct user roles (e.g., Admin, Analyst, Citizen) and granular permissions. The \texttt{RolePermission} junction table establishes a many-to-many relationship, allowing flexible permission assignment to roles.
 
 \paragraph{Alerts \& Recommendations}
 
-\begin{figure}[h]
-  \centering
-  \includegraphics[width=0.9\textwidth]{Imagenes/ER_Diagram.png}
-  \caption{ER diagram – Alerts \& Recommendations component}
-  \label{fig:er_alerts_recommendations}
-\end{figure}
-
 This component supports personalized user engagement. The \texttt{Alert} table stores threshold-based alert configurations created by users (e.g., notify when PM2.5 exceeds 50 $\mu$g/m$^3$), with fields for the pollutant, threshold value, delivery method (email, SMS), and trigger timestamp. The \texttt{Recommendation} table contains health-oriented suggestions generated based on pollution levels and user location. The \texttt{ProductRecommendation} table links recommendations to certified protection products (e.g., face masks, air purifiers), providing actionable guidance during high pollution events.
 
 \paragraph{Reporting \& Analytics}
-
-\begin{figure}[h]
-  \centering
-  \includegraphics[width=0.9\textwidth]{Imagenes/ER_Diagram.png}
-  \caption{ER diagram – Reporting \& Analytics component}
-  \label{fig:er_reporting_analytics}
-\end{figure}
 
 This component bridges operational and analytical workloads. The \texttt{Report} table stores metadata for user-generated reports, including parameters (city, date range, station, pollutant) and file paths for exported documents. The \texttt{AirQualityDailyStats} table is an analytical entity that contains pre-aggregated daily statistics per station and pollutant (average, maximum, minimum AQI values, and reading counts). This aggregation table supports efficient business intelligence queries and dashboard visualizations without repeatedly scanning the raw \texttt{AirQualityReading} table.
 
