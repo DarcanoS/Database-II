@@ -1,75 +1,83 @@
-\section{Concurrency Analysis}
+\section{Monitoring Strategy}
 
-\subsection{Scenarios of Concurrency in the Air Quality Platform}
+\subsection{Key Monitoring Requirements for the Air Quality Platform}
 
-In a multi-user, real-time data platform like ours, several components operate simultaneously and interact with shared data resources. The following table outlines key scenarios where concurrency issues may arise:
+Given the real-time nature of our ingestion processes and the read-intensive behavior of users, monitoring focuses primarily on operational health, ingestion performance, and error detection. The following table summarizes the core metrics that must be tracked to guarantee platform stability.
 
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{|X|X|X|}
 \hline
-\textbf{Scenario} & \textbf{Description} & \textbf{Concurrency Risk} \\
+\textbf{Metric} & \textbf{Description} & \textbf{Reason for Monitoring} \\
 \hline
-Data ingestion every 10 minutes from multiple APIs & The Ingestor service retrieves data from AQICN, Google, IQAir, and others in parallel, storing results in the \texttt{airquality\_reading} table. & Simultaneous writes to the same table could lead to duplicated records, inconsistent values, or race conditions during normalization. \\
+Execution time per ingestion job & Each ingestion cycle (every 10 minutes) must complete within an acceptable time window. & Detects performance degradation, API delays, or processing bottlenecks. \\
 \hline
-Simultaneous report generation by users & Researchers, citizens, and public officials may generate historical or personalized reports at the same time. & Heavy concurrent reads on the same materialized views may increase query latency, or return incomplete data if a refresh is in progress. \\
+Ingestion delays & Measures the difference between expected ingestion timestamps and actual processed time. & Identifies late data insertion, network issues, or queue congestion. \\
 \hline
-Alert customization by the same user on multiple devices & A user might modify alert preferences via mobile and desktop at the same time. & Conflicting updates to \texttt{alert} or \texttt{dashboard\_config} tables can result in lost updates, where the last write overwrites the first. \\
+API errors (4xx / 5xx) & Tracks client-side and server-side errors from external providers (AQICN, Google, IQAir). & Quickly identifies provider failures, quota exhaustion, or malformed requests. \\
 \hline
-Concurrent access to real-time dashboards & Multiple users request dashboards with updated AQI indicators, which rely on materialized views and partitioned tables. & Reads may occur during materialized view refresh, causing temporary inconsistencies or slow responses. \\
+Log retention (7 days) & All ingestion, processing, and pipeline logs are stored for one week. & Ensures traceability for incident analysis without excessive storage usage. \\
 \hline
 \end{tabularx}
-\caption{Scenarios of Concurrency in the Platform}
+\caption{Key Monitoring Requirements of the Platform}
 \end{table}
 
-\subsection{Potential Problems and Concrete Examples}
+\subsection{Monitoring Scenarios Aligned with Current Usage Patterns}
+
+Since current users only perform read operations and there is no multi-user editing, concurrency-related monitoring is minimal. Instead, monitoring focuses on ingestion consistency, system stability, and availability.
 
 \begin{itemize}
-    \item \textbf{Lost Update:} Two administrators modify a user's alert thresholds for PM2.5 simultaneously. Since there's no mechanism to detect concurrent changes, one update silently overwrites the other.
+    \item \textbf{Ingestion every 10 minutes:} The ingestion pipeline must be monitored to ensure that no job exceeds the allowed duration or becomes desynchronized with the schedule.
     
-    \item \textbf{Dirty Read:} A researcher queries monthly averages while the materialized view is being refreshed. The result may mix old and new data, leading to incorrect analysis.
+    \item \textbf{Read-only dashboard usage:} All interactions with dashboards and reports depend on the consistency of recent ingestions. Monitoring query performance ensures users always access fresh and reliable AQI data.
     
-    \item \textbf{Non-repeatable Read / Phantom Read:} During dashboard loading, new air quality records are ingested. The initial count of pollutants differs from the second access within the same request scope.
-    
-    \item \textbf{Deadlock:} The Ingestor updates both \texttt{station} metadata and \texttt{airquality\_reading} values, while the recommendation engine attempts to read and update user alerts simultaneously. A cyclic dependency could arise, locking resources indefinitely.
+    \item \textbf{Single-client configuration:} Because ingestion, reporting, and visualization are centralized, the risk of concurrent modifications is negligible. Monitoring therefore focuses on operational continuity.
 \end{itemize}
 
-\subsection{Proposed Control Mechanisms}
+\subsection{Potential Operational Problems and Examples}
+
+\begin{itemize}
+    \item \textbf{Slow Ingestion Job:} If an ingestion cycle takes longer than 10 minutes, subsequent jobs may overlap, causing delays and cascading failures.
+    
+    \item \textbf{High API Error Rates:} A spike in 4xx errors may indicate quota exhaustion or invalid parameters; 5xx errors may signal temporary outages from external APIs.
+    
+    \item \textbf{Delayed Data Availability:} If ingestion is delayed, dashboards may show outdated AQI values, reducing reliability of alerts and recommendations.
+    
+    \item \textbf{Insufficient Log Retention:} If logs rotate too early, incident diagnosis becomes impossible; if they persist too long, storage cost increases unnecessarily.
+\end{itemize}
+
+\subsection{Proposed Monitoring Controls and Tools}
 
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{|X|X|X|}
 \hline
-\textbf{Problem} & \textbf{Proposed Solution} & \textbf{Justification} \\
+\textbf{Metric} & \textbf{Control Mechanism} & \textbf{Justification} \\
 \hline
-Inconsistent reads on materialized views & Use \texttt{REFRESH MATERIALIZED VIEW CONCURRENTLY} & Prevents blocking queries while refreshing, allowing consistent snapshots for users. \\
+Execution time per ingestion job & Track duration via cron monitoring or job instrumentation (Prometheus + Grafana) & Detect anomalies early and prevent overlap between ingestion cycles. \\
 \hline
-Write conflicts (alerts, configs) & Implement optimistic concurrency control using a \texttt{version\_id} or \texttt{last\_updated} timestamp field & Detects if a record was changed before writing; avoids silent overwrites. \\
+Ingestion delays & Compare expected timestamps vs. actual ingestion completion time & Ensures that dashboards and reports operate on timely and accurate data. \\
 \hline
-Race conditions in personalization settings & Apply row-level locks with \texttt{SELECT ... FOR UPDATE} on the \texttt{dashboard\_config} and \texttt{alert} tables & Ensures atomic updates from concurrent processes. \\
+API errors (4xx / 5xx) & Implement error counters and alert thresholds & Enables rapid detection of external provider issues and reduces downtime. \\
 \hline
-Simultaneous ingestion from APIs & Use database transactions and unique constraints on timestamp + station + pollutant keys & Ensures no duplication during high-frequency ingestions. \\
-\hline
-Inter-process contention in distributed services & Design for eventual consistency and adopt message queues (e.g., Kafka or RabbitMQ) for ingestion pipelines (future implementation) & Allows safe decoupling of ingestion and processing layers, with ordering guarantees. \\
-\hline
-Dashboard latency under concurrent access & Introduce caching layers (e.g., Redis) and use read replicas for BI/reporting queries & Reduces load on the primary database, ensures fast dashboard performance. \\
+Log retention (7 days) & Configure log rotation policies (e.g., Loki or ELK) & Provides sufficient data for audits while keeping storage usage efficient. \\
 \hline
 \end{tabularx}
-\caption{Concurrency Problems and Control Mechanisms}
+\caption{Monitoring Metrics and Control Mechanisms}
 \end{table}
 
 \subsection{Fit with Existing Architecture}
 
-Our architecture is already well-prepared to mitigate many concurrency issues:
+The platform already includes design elements that simplify monitoring:
 
 \begin{itemize}
-    \item \textbf{Partitioned PostgreSQL with TimescaleDB:} Ensures smaller scan sizes for time-based queries, reducing contention and improving concurrency in historical data access.
+    \item \textbf{Partitioned PostgreSQL and TimescaleDB:} Time-based partitioning improves query performance and enables efficient ingestion monitoring.
     
-    \item \textbf{Materialized Views for Aggregations:} Used for fast dashboard and report queries. Combined with concurrent refresh, they prevent blocking reads during updates.
+    \item \textbf{Materialized views for dashboards:} Monitoring view refresh times ensures smooth user experience and prevents stale visualizations.
     
-    \item \textbf{MinIO for raw ingestion backups:} All raw data is stored before processing, allowing replay in case of write conflicts or ingestion failures.
+    \item \textbf{Hybrid storage model (PostgreSQL + MongoDB):} Logs and ingestion traces can be stored efficiently and accessed independently of analytical workloads.
     
-    \item \textbf{REST and GraphQL APIs with different access roles:} Enables permission separation between admin, citizen, and researcher roles, limiting write conflicts.
+    \item \textbf{Containerized ingestion pipeline:} Each component exposes clear metrics and logs, enabling granular monitoring.
     
-    \item \textbf{Potential improvements (future work):} We recommend implementing a versioning field in editable tables (e.g., alerts, recommendations) and exploring Kafka for ingestion pipelines to fully embrace asynchronous, scalable operations.
+    \item \textbf{Centralized log retention (7 days):} Ensures consistent access to operational data without overwhelming storage resources.
 \end{itemize}
