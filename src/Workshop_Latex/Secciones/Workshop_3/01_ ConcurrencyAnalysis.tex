@@ -2,7 +2,7 @@
 
 \subsection{Key Monitoring Requirements for the Air Quality Platform}
 
-Given the real-time nature of our ingestion processes and the read-intensive behavior of users, monitoring focuses primarily on operational health, ingestion performance, and error detection. The following table summarizes the core metrics that must be tracked to guarantee platform stability.
+Given the frequent ingestion schedule of our pipeline (periodic jobs running every 10 minutes) and the read-intensive behavior of users, monitoring focuses primarily on operational health, ingestion performance, and error detection. The following table summarizes the core metrics that must be tracked to guarantee platform stability.
 
 \begin{table}[H]
 \centering
@@ -68,14 +68,14 @@ Log retention (7 days) & Configure log rotation policies (e.g., Loki or ELK) & P
 
 \subsection{Fit with Existing Architecture}
 
-The platform already includes design elements that simplify monitoring:
+The monitoring strategy fits naturally with the PostgreSQL-based architecture and can leverage additional optimizations as the platform evolves:
 
 \begin{itemize}
-    \item \textbf{Partitioned PostgreSQL and TimescaleDB:} Time-based partitioning improves query performance and enables efficient ingestion monitoring.
+    \item \textbf{PostgreSQL with optional partitioning or TimescaleDB:} The platform can adopt time-based partitioning or TimescaleDB extensions in the future to improve query performance and enable more efficient ingestion monitoring as dataset size grows.
     
-    \item \textbf{Materialized views for dashboards:} Monitoring view refresh times ensures smooth user experience and prevents stale visualizations.
+    \item \textbf{Materialized views for dashboards:} The architecture can utilize materialized views to accelerate dashboard queries; monitoring their refresh times would ensure smooth user experience and prevent stale visualizations.
     
-    \item \textbf{Hybrid storage model (PostgreSQL + MongoDB):} Logs and ingestion traces can be stored efficiently and accessed independently of analytical workloads.
+    \item \textbf{Hybrid storage model (PostgreSQL + lightweight NoSQL):} Logs and ingestion traces can be stored efficiently and accessed independently of analytical workloads.
     
     \item \textbf{Containerized ingestion pipeline:} Each component exposes clear metrics and logs, enabling granular monitoring.
     
