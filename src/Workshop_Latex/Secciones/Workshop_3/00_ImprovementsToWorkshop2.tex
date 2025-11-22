@@ -1,0 +1,23 @@
+% Improvements to Workshop 2 – Functional Requirements Refinement
+% This subsection summarizes the changes applied to FR1–FR14 based on instructor feedback.
+% See _temp_corrections/FR_changes_spec.md and Requirements_FR_corrections.csv for details.
+
+\subsection{Improvements to Workshop 2}
+
+Following the instructor's feedback on Workshop 2, the functional requirements (FR1–FR14) of the Air Quality Analysis Platform were systematically revised and reorganized to better align with the scope and expectations of a realistic course project. The primary goal of this refinement was to eliminate overly ambitious features, establish clear boundaries between baseline and optional functionality, and ensure that all requirements remain traceable to the revised architecture and data model presented in Workshop 2.
+
+The updated requirements are now classified into three distinct categories: \textbf{baseline} (must be implemented as part of the core project), \textbf{optional} (desirable features that may be included if time permits), and \textbf{future work} (explicitly out of scope for the current course project). This classification addresses the instructor's concern that the original requirements included features beyond what could realistically be achieved within the course timeline, such as strict real-time streaming and advanced map-based navigation. By making these scope boundaries explicit, the project now presents a more focused and achievable development plan.
+
+The refinement process involved several key types of changes across the functional requirements. First, requirements that previously implied strict "real-time" data processing (FR1, FR4) were reworded to reflect a more realistic \textbf{periodic ingestion} model, where data is collected and processed at regular intervals (e.g., every few minutes or hourly) rather than through continuous streaming. Second, requirements related to recommendations and suggestions (FR8, FR10) were clarified to emphasize \textbf{simple, rule-based logic} rather than complex machine learning or recommender systems—FR8 now explicitly describes threshold-based recommendations tied to AQI levels, while FR10 frames product suggestions as purely \textbf{informational guidance} about protective measures, not as an e-commerce module. Third, the map-based navigation feature (FR11), which would require advanced geospatial querying and visualization components, was moved entirely to the \textbf{future work} category to avoid scope creep. Finally, the responsive interface requirement (FR13) was clarified to specify a \textbf{responsive web application} rather than native mobile apps, aligning with the technical approach outlined in the architecture.
+
+In summary, the main categories of improvements include:
+
+\begin{itemize}[noitemsep]
+    \item \textbf{Realistic data processing:} Replaced strict real-time guarantees with periodic ingestion and "latest available data" semantics (FR1, FR4).
+    \item \textbf{Simplified recommendation logic:} Scoped recommendations (FR8) as rule-based and clarified product suggestions (FR10) as informational, not transactional.
+    \item \textbf{Deferred advanced features:} Moved map-based navigation (FR11) to future work to keep the baseline achievable.
+    \item \textbf{Clear platform scope:} Specified a responsive web interface (FR13) instead of implying native mobile development.
+    \item \textbf{Explicit scope classification:} Marked FR10 and FR14 as optional, keeping the baseline lean and focused on core air quality monitoring and reporting functionality.
+\end{itemize}
+
+These changes ensure that the functional requirements are not only aligned with the instructor's feedback but also consistent with the system architecture, data ingestion pipeline, and database design presented in Workshop 2, setting a solid foundation for the concurrency, distribution, and performance analysis in Workshop 3.
