@@ -1,72 +1,95 @@
-
 \section{Parallel and Distributed Database Design}
 
-\subsection{Justification for a Distributed and Parallel Design}
+\subsection{Context and Scope of This Section}
 
-The system requires an infrastructure capable of operating \textbf{efficiently, continuously, and at scale} in the face of the following challenges:
+This section provides an analytical and forward-looking exploration of how the Air Quality Analysis Platform could evolve into a parallel and distributed database model as its operational scale increases. Currently, the platform relies on a centralized architecture that combines PostgreSQL with TimescaleDB extensions and a complementary NoSQL store. This setup is sufficient for its present data volume, geographic coverage, and analytical needs.
 
-\begin{itemize}[leftmargin=1.5em]
-  \item \textbf{High-frequency data ingestion:} Every 10 minutes, data is received from multiple external air quality sources.
-  \item \textbf{Complex analytical queries:} The system must process historical trends, pollutant groupings, locations, and time ranges.
-  \item \textbf{Concurrent access from multiple regions:} Users such as citizens, government agencies, and researchers interact from different geographic zones.
-  \item \textbf{Storage of large historical volumes:} The system is expected to store years of station data, resulting in high volumes of temporal and geospatial information.
-  \item \textbf{Continuous availability:} The system must run uninterrupted, with fault tolerance and operational continuity for both reads and writes.
-\end{itemize}
+However, as the number of monitored locations grows and long-term retention of real-time geospatial measurements increases, the underlying infrastructure may require structural adjustments. The purpose of this section is therefore not to describe the current implementation, but to outline possible future design paths that ensure long-term scalability, reliability, and performance.
 
-To address these challenges, a \textbf{distributed and parallel architecture} is proposed, which includes:
+\subsection{Rationale for Future Distributed or Parallel Architectures}
+
+Several projected developments of the platform may demand a transition toward distributed or parallel database mechanisms:
 
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Horizontal scalability:} The ability to add nodes or instances as data volume or user demand grows.
-  \item \textbf{High availability:} Through replication, redundancy, and load balancing.
-  \item \textbf{Load separation:} Decoupling ingestion, querying, and data visualization processes to prevent bottlenecks or blocking operations.
+    \item \textbf{Increasing ingestion frequency and scale:} Data is ingested every 10 minutes from multiple external APIs. As more stations and cities are added, the volume of incoming measurements will increase considerably, generating higher write throughput.
+    
+    \item \textbf{Growth of historical time-series datasets:} Storing several years of air quality and geospatial data results in large, continuously expanding tables, intensifying analytical workloads over time.
+    
+    \item \textbf{More complex analytical and BI queries:} Public agencies, researchers, and institutions may require long-range trend evaluations, spatial joins, or aggregated models that can benefit from parallel execution.
+    
+    \item \textbf{Geographic expansion of the system:} Integrating additional regions introduces challenges such as increased latency, larger query spans, and potential regulatory constraints regarding data locality.
+    
+    \item \textbf{High availability and operational continuity:} Since the platform supports real-time dashboards, notifications, and decision-making applications, uninterrupted service becomes essential, encouraging the adoption of replicated and fault-tolerant environments.
 \end{itemize}
 
-\subsection{High-Level Design}
-
-\subsubsection{Data Distribution and Segmentation}
+In this context, adopting a distributed or parallel database model in the future would support:
 
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Temporal partitioning:} Data is divided based on collection time (e.g., by week or month), facilitating historical queries and storage management.
-  \item \textbf{Geographic segmentation:} Data is distributed by region or country, enabling localized queries, improved performance, and compliance with regional regulations.
-  \item \textbf{User- or entity-based fragmentation:} Configurations, alerts, and preferences are distributed based on user or institution identifiers, ensuring balanced load and fast access.
+    \item \textbf{Horizontal scalability} for both ingestion and analytical processes.
+    \item \textbf{Lower latency} through geographically localized data nodes.
+    \item \textbf{Separation of workloads} between ingestion, storage, and business intelligence layers.
+    \item \textbf{Higher availability} through replication and automated failover mechanisms.
 \end{itemize}
 
-\subsubsection{General Diagram of Distributed Architecture}
+\subsection{Potential Distribution and Fragmentation Approaches}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.8\textwidth]{Imagenes/distributed.png}
-  \caption{High-level Distributed Database Architecture}
-\end{figure}
+The following strategies describe how the platform’s data could be partitioned or distributed across multiple nodes as the system grows:
 
+\subsubsection{Temporal Fragmentation (Time-Based Partitioning Across Nodes)}
 
-\subsection{Parallelism Strategies}
+Air quality data is inherently chronological. A natural distribution approach would be to fragment data by time ranges (e.g., monthly or quarterly segments), placing older partitions on separate nodes. This approach supports:
 
-\begin{longtable}{@{}p{4cm}p{6cm}p{6cm}@{}}
-\toprule
-\textbf{Area} & \textbf{Applied Technique} & \textbf{Expected Benefit} \\
-\midrule
-Query processing & Parallel execution of aggregations, filters, and groupings & Reduces response time for complex reports \\
-Data ingestion & Independent processes per data source & Allows simultaneous ingestion without degrading overall performance \\
-Real-time visualization & Non-blocking updates of precomputed views & Ensures smooth access without intermediate calculation delays \\
-Distributed storage & Load distribution across multiple nodes or regions & Improves performance and availability in case of failures \\
-Concurrent querying & Dedicated read replicas for reporting or BI & Separates analytical load from daily transactional processing \\
-Highly dynamic data & Segmentation based on user or device & Reduces latency for personalized operations \\
-\bottomrule
-\end{longtable}
+\begin{itemize}[leftmargin=1.5em]
+    \item Faster queries over recent data (typically most requested).
+    \item Distributed processing for long historical analyses.
+    \item Efficient archival and data-retention policies.
+\end{itemize}
 
-\subsection{Technical Justification Based on Requirements}
+\subsubsection{Geographical Fragmentation (Region-Based Distribution)}
 
-\begin{longtable}{@{}p{6.5cm}p{8.5cm}@{}}
-\toprule
-\textbf{System Requirement} & \textbf{Adopted Architectural Approach} \\
-\midrule
-Continuous data ingestion & Parallel processing per input source \\
-24/7 high availability & Replication and load balancing across distributed nodes \\
-Real-time access (<2 seconds) & Optimized queries over precomputed views \\
-Massive personalization & Horizontal segmentation of user data \\
-Historical reports with millions of records & Time-based partitioning + distributed execution \\
-Geographic and demographic expansion & Regional sharding and request load balancing by zone \\
-Read/write separation & Role-based division between query and processing databases \\
-\bottomrule
-\end{longtable}
+Since the system manages air quality readings by city and country, data could be distributed by geographic zones. Benefits include:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Lower latency for regional queries.
+    \item Improved performance for geospatial filters and location-based analytics.
+    \item Compliance with potential future regional data regulations.
+    \item Reduced load on the primary cluster during regional peak usage.
+\end{itemize}
+
+\subsubsection{Hybrid Fragmentation Model (Time + Geography)}
+
+A combined model could be applied when the density of readings increases significantly. For example:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Partitions by country distributed across regional nodes.
+    \item Within each region, temporal partitions optimized for time-series operations.
+\end{itemize}
+
+This hybrid model aligns with the platform’s long-term objective of supporting multi-city and multi-country audiences efficiently.
+
+\subsubsection{Replication for High Availability}
+
+To maintain uninterrupted service, read replicas could be introduced for:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Dashboards and public-facing visualizations.
+    \item Analytical workloads executed by BI tools or researchers.
+\end{itemize}
+
+This ensures that ingestion processes do not compete with visualization or reporting tasks, improving both reliability and performance.
+
+\subsubsection{Parallel Execution for Analytical Queries}
+
+As historical datasets grow, analytic operations—such as aggregations, pollutant correlation analysis, and geospatial pattern detection—could benefit from:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Parallel execution plans within PostgreSQL clusters.
+    \item Distributed compute nodes dedicated to research-intensive workloads.
+\end{itemize}
+
+These enhancements strengthen the platform’s ability to support institutional and scientific stakeholders.
+
+\subsection{Summary}
+
+Although the platform currently operates under a centralized database architecture, projected growth in data volume, geospatial coverage, and analytical requirements makes it necessary to anticipate more sophisticated storage and processing models. The distribution strategies outlined—temporal, geographic, hybrid, and workload-based—provide feasible migration paths that maintain alignment with the platform’s objectives of scalability, high availability, and low-latency access.
+\newpage
