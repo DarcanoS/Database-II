@@ -17,4 +17,37 @@ Materialized views are refreshed concurrently to avoid blocking read operations,
 
 \subsection*{4. API and User Access}
 An API layer exposes REST and GraphQL endpoints for citizens, researchers, and BI tools. Administrative users access the database through a dedicated API, while query latency and slow statements are monitored via Grafana dashboards.
+
+% Performance and data volume estimates for the Air Quality Platform.
+% See _temp_corrections/Performance_Data_Estimates_spec.md
+\subsection{Performance and data estimates}
+
+This subsection provides concrete data volume and workload assumptions for the Air Quality Platform. These estimates support performance-related design decisions and align with the revised non-functional requirements, ensuring that the system remains scalable within the scope of the course project without requiring a multi-region or big-data infrastructure.
+
+The platform's monitoring network is assumed to consist of approximately 50 stations, each tracking 3 pollutants (e.g., PM2.5, PM10, NO₂) with readings collected every 15 minutes. This configuration yields roughly 14,400 raw readings per day inserted into the \texttt{AirQualityReading} table. Over a 3-year operational period, the system accumulates approximately 15.8 million raw readings. In contrast, the \texttt{AirQualityDailyStats} table—which stores pre-aggregated daily statistics—grows at a much slower rate of 150 rows per day (one per station per pollutant), totaling approximately 50,000–60,000 rows over several years. The user base is estimated at around 1,000 registered accounts (\texttt{AppUser}), with 2,000–3,000 configured alerts.
+
+Table~\ref{tab:data_estimates} summarizes the estimated volumes for the main operational entities.
+
+\begin{table}[H]
+\centering
+\caption{Data volume estimates for key entities over a 3-year period}
+\label{tab:data_estimates}
+\begin{tabular}{|p{4cm}|p{3cm}|p{2.5cm}|p{4cm}|}
+\hline
+\textbf{Entity} & \textbf{Approx. volume (3 years)} & \textbf{Growth per day} & \textbf{Notes} \\
+\hline
+AirQualityReading & $\sim$15.8M rows & 14,400 rows & Raw sensor readings \\
+\hline
+AirQualityDailyStats & $\sim$50–60k rows & 150 rows & Aggregated daily statistics \\
+\hline
+AppUser & $\sim$1,000 users & Low & Registered user accounts \\
+\hline
+Alert & $\sim$2–3k alerts & Low & Threshold-based notifications \\
+\hline
+\end{tabular}
+\end{table}
+
+The workload exhibits a read-heavy pattern, with dashboard and analytical queries dominating system usage. Writes are moderate and predictable, consisting primarily of continuous ingestion into \texttt{AirQualityReading} and periodic batch updates to \texttt{AirQualityDailyStats}. To maintain sub-second query performance (NFR1) and support efficient report generation (NFR4, NFR6), composite indexes are applied to frequently queried columns: (\texttt{station\_id}, \texttt{datetime}) on \texttt{AirQualityReading} and (\texttt{station\_id}, \texttt{date}) on \texttt{AirQualityDailyStats}. Most dashboard and reporting queries leverage the aggregated statistics table, minimizing expensive full-table scans on the raw readings. This indexing strategy, combined with the use of a single PostgreSQL instance with automated backups, satisfies the fault tolerance requirements (NFR7) without necessitating a distributed or multi-region deployment.
+
+Should data volumes grow significantly beyond current projections, time-based partitioning (e.g., monthly or yearly partitions on \texttt{AirQualityReading}) or read replicas can be introduced incrementally. This approach aligns with NFR8, which treats horizontal scalability as a future design goal rather than an immediate requirement, ensuring that the architecture remains extensible without overengineering for the present scope.
 \newpage
