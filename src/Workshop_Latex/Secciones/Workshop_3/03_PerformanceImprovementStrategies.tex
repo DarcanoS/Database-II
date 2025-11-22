@@ -1,114 +1,174 @@
-\section{Strategies to Improve System Performance}
+\section{Performance Improvement Strategies}
 
-\subsection{Data Partitioning (Temporal and Geographic)}
+The goal is not to introduce heavy distributed technologies prematurely, but to identify realistic optimizations that match the system’s workload, data characteristics and projected growth.
 
-\textbf{Description:}
+\subsection{1. Partitioning of Operational and Analytical Data}
 
-The \texttt{airquality\_reading} table, which stores millions of records from various stations and cities, is divided into \textbf{temporal partitions} (e.g., one per month) and \textbf{geographic partitions} (by country or city). For example:
+\subsubsection*{Rationale}
 
-\begin{itemize}
-  \item The ``Bogot\'a-Centro'' station stores its data in the partition  \\
-  \texttt{airquality\_reading\_bogota\_2025\_06}.
-  \item The ``Medell\'in-Sur'' station stores its data in \texttt{airquality\_reading\_medellin\_2025\_06}.
-  \item On the backend, records are automatically routed based on \texttt{city} and \texttt{created\_at}.
+The platform stores high-frequency air quality readings and generates daily analytical summaries. Although the system currently operates on a single PostgreSQL instance, partitioning can significantly improve query latency and maintenance operations as the dataset grows.
+
+\subsubsection*{Strategy: Temporal Partitioning}
+
+The \texttt{AirQualityReading} table can be divided into monthly partitions. This approach is aligned with the ingestion pattern (continuous, time-ordered data) and the most common dashboard filters (daily or monthly views).
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Recent months stay in fast storage for dashboards and near-real-time analytics.
+    \item Older partitions can be compressed, moved to cheaper storage, or archived.
 \end{itemize}
 
-\textbf{Concrete example:}
+\subsubsection*{Strategy: Geographic Partitioning (Future)}
 
-\begin{verbatim}
-CREATE TABLE airquality_reading_bogota_2025_06 PARTITION OF airquality_reading
-  FOR VALUES FROM ('2025-06-01') TO ('2025-07-01')
-  WHERE city = 'Bogotá';
-\end{verbatim}
+If the platform expands beyond a single city or region, additional partitions can be introduced by geographic area (\texttt{country}, \texttt{city}). This hybrid model (time + geography) reduces scan ranges and minimizes contention on the operational store.
 
-\textbf{Specific advantages:}
-\begin{itemize}
-  \item Dashboard queries filtered by ``Bogotá - June 2025'' scan only one or two partitions $\rightarrow$ faster responses.
-  \item Data cleanup (e.g., data older than 2 years) is simplified by archiving or dropping complete partitions.
+\subsubsection*{Benefits}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Faster query execution for dashboards filtered by city or date.
+    \item Simplified retention policies, since old partitions can be dropped or archived directly.
+    \item Reduced bloat and improved vacuum performance on hot partitions.
 \end{itemize}
 
-\textbf{Trade-offs / Challenges:}
-\begin{itemize}
-  \item As the system grows, you could have \textbf{over 1000 active partitions} without proper archiving.
-  \item Queries lacking proper filters (e.g., no \texttt{city} or \texttt{created\_at}) may result in full scans $\rightarrow$ performance issues.
-  \item Real-time \textbf{data routing} must be carefully implemented to insert data into the correct partition by region and date.
+\subsubsection*{Trade-offs}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Requires discipline in query design to ensure proper use of filters.
+    \item Excessive partitions (hundreds) may degrade planning time if not managed.
 \end{itemize}
 
-\subsection{Replication and Read Separation}
+\subsection{2. Read Replicas for Workload Separation}
 
-\textbf{Description:}
+\subsubsection*{Rationale}
 
-Your system has three main user profiles: \textbf{citizens}, \textbf{researchers}, and \textbf{public entities}. All of them access dashboards and reports, generating heavy read traffic on historical data.
+Even in a modest-scale platform, citizen dashboards, research queries and administrative reports can generate substantial read traffic over historical data. These long-running scans may interfere with ingestion jobs or analytical batch operations.
 
-To avoid these reads from affecting incoming data writes, it's recommended to deploy \textbf{read-only replicas} dedicated exclusively to:
+\subsubsection*{Strategy}
 
-\begin{itemize}
-  \item Citizen dashboards.
-  \item Reports generated via the web interface.
-  \item Visualizations in mobile apps.
+Introduce one or more asynchronous read replicas that serve:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Citizen dashboards and maps.
+    \item Researcher queries over historical records.
+    \item Public-facing visualization endpoints.
 \end{itemize}
 
-\textbf{Concrete example in your system:}
+The primary node focuses exclusively on:
 
-\begin{itemize}
-  \item The primary node receives new data every 10 minutes from the APIs.
-  \item Synchronized replicas serve dashboard or analytics queries with a short delay (e.g., 5 seconds).
-  \item In case of failure, replicas can automatically take over.
+\begin{itemize}[leftmargin=1.5em]
+    \item ingesting new measurements,
+    \item running validation and normalization steps,
+    \item generating daily aggregates.
 \end{itemize}
 
-\textbf{Specific advantages:}
-\begin{itemize}
-  \item Citizens accessing from different cities simultaneously won't affect ingestion or backend processing.
-  \item Improves performance during peak traffic (e.g., pollution alerts or environmental events).
-  \item Scalable: you can deploy region-specific replicas (e.g., one in Bogotá, another in Medellín).
+\subsubsection*{Benefits}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Eliminates competition between ingestion and analytical reads.
+    \item Reduces latency during peak pollution events when dashboard traffic spikes.
+    \item Provides a pathway toward high availability (automatic failover).
 \end{itemize}
 
-\textbf{Trade-offs / Challenges:}
-\begin{itemize}
-  \item Replication is not instantaneous: dashboards may display \textbf{slightly delayed data (lag)}.
-  \item Requires monitoring tools to detect \textbf{outdated or failed replicas}.
-  \item It does not reduce write latency or solve write conflicts (e.g., simultaneous updates from multiple APIs).
+\subsubsection*{Trade-offs}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Replication lag introduces slight delays in dashboards (a few seconds).
+    \item Additional monitoring is required to detect replica staleness.
 \end{itemize}
 
-\subsection{Asynchronous Ingestion with Message Queues}
+\subsection{3. Parallel Execution for Analytical Queries}
 
-\textbf{Description:}
+\subsubsection*{Rationale}
 
-Your system ingests air quality data from \textbf{multiple sources (AQICN, IQAir, Google, local stations)} every 10 minutes. If handled synchronously, an error in one source can disrupt the entire ingestion process. To prevent this, you can use a message queue system (like Kafka or RabbitMQ) to decouple \textbf{data capture}, \textbf{processing}, and \textbf{storage}.
+The \texttt{AirQualityDailyStats} table is accessed by researchers and public organizations to run long-range analyses. As the table grows (multiple cities, multi-year retention), single-threaded query plans may become slow.
 
-\textbf{Concrete example in your system:}
-\begin{itemize}
-  \item Each API has a "producer" that sends data into a queue.
-  \item Multiple parallel "consumers" validate, normalize, deduplicate, and store the data.
-  \item If Google's API fails, only that producer is affected — the system continues running.
+\subsubsection*{Strategy}
+
+Enable PostgreSQL’s parallel query execution mechanisms for:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item large temporal scans (multi-month or multi-year),
+    \item computations of pollutant averages or correlations,
+    \item geospatial filters (bounding boxes or radial searches).
 \end{itemize}
 
-\textbf{Specific advantages:}
-\begin{itemize}
-  \item Scales automatically: if you add 20 new stations in Cali, just spin up more consumers.
-  \item If an API sends corrupted data, you can isolate and pause only that stream.
-  \item The pipeline is resilient: if a validation service fails, messages can be retried later.
+Parallel plans distribute segments of the scan across multiple CPU cores, reducing total execution time without modifying the database topology.
+
+\subsubsection*{Benefits}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Significant reductions in analytical query runtime.
+    \item Zero changes to application logic.
 \end{itemize}
 
-\textbf{Trade-offs / Challenges:}
-\begin{itemize}
-  \item Introduces \textbf{additional latency}: data may take 30--60 seconds to reach the dashboard.
-  \item Requires logic to handle \textbf{duplicate or out-of-order messages} (e.g., same record sent twice by AQICN).
-  \item Increases infrastructure and monitoring complexity (e.g., tracking message consumption status).
+\subsubsection*{Trade-offs}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Requires tuning of PostgreSQL parameters (e.g., \texttt{max\_parallel\_workers\_per\_gather}).
+    \item Benefits depend on server CPU availability.
 \end{itemize}
 
-\subsection*{Comparative Summary}
+\subsection{4. Optimized Batch Ingestion and Daily Aggregation}
+
+\subsubsection*{Rationale}
+
+The ingestion workflow (external APIs → ingestion job → normalizer → PostgreSQL) is executed on a scheduled basis. Although not real-time, it must remain predictable and resilient against API delays or inconsistent data.
+
+\subsubsection*{Strategy}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Use bulk inserts instead of row-by-row ingestion.
+    \item Apply batching windows aligned with partition boundaries.
+    \item Run daily aggregation during low-traffic periods.
+    \item Use indexes optimized for ingestion (e.g., partial indexes on active partitions only).
+\end{itemize}
+
+\subsubsection*{Benefits}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Lower write amplification during ingestion.
+    \item Guaranteed freshness of daily analytical data.
+    \item Stable ingestion latency regardless of traffic patterns.
+\end{itemize}
+
+\subsection{5. Caching of Hot Data at the API Layer}
+
+\subsubsection*{Rationale}
+
+Certain values are accessed extremely frequently—such as the latest AQI per station, daily recommendations and alert levels—while being updated only every few minutes.
+
+\subsubsection*{Strategy}
+
+Use a short-lived in-memory cache (within the API server) to store:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item latest readings per station,
+    \item precomputed recommendation text,
+    \item daily aggregates for the current day.
+\end{itemize}
+
+\subsubsection*{Benefits}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Reduces repetitive database queries.
+    \item Improves responsiveness for high-traffic endpoints.
+\end{itemize}
+
+\subsection{6. Summary of Proposed Strategies}
 
 \begin{center}
-\begin{tabular}{|p{5.5cm}|p{5cm}|p{5.5cm}|}
+\begin{tabular}{|p{5cm}|p{5cm}|p{5cm}|}
 \hline
-\textbf{Strategy} & \textbf{Key Benefit} & \textbf{Main Challenge} \\
+\textbf{Strategy} & \textbf{Key Benefit} & \textbf{Main Trade-off} \\
 \hline
-Temporal and geographic partitioning & Fast, efficient queries by city and time & Complex partition management at scale \\
+Temporal and geographic partitioning & Fast, selective scans and easier retention & Requires careful query design and partition management \\
 \hline
-Read replicas & Better performance for dashboards and reports & Slight data lag and synchronization complexity \\
+Read replicas & Offloads dashboards and analytics & Replication lag and additional monitoring \\
 \hline
-Asynchronous ingestion with queues & Scalability, resilience, and decoupling & Added latency and handling of duplicates/errors \\
+Parallel execution in PostgreSQL & Faster analytical queries with no redesign & Requires parameter tuning and CPU availability \\
+\hline
+Optimized batch ingestion & Predictable ingestion and cleaner partitions & Requires ingestion window coordination \\
+\hline
+API-level caching & Reduces repeated DB access & Only useful for short-lived, stable data \\
 \hline
 \end{tabular}
 \end{center}
