@@ -1,5 +1,7 @@
 \section{Requirements}
 
+% Functional requirements (FR1–FR14) updated according to instructor feedback – see Requirements_FR_corrections.csv
+
 \begin{longtable}{|p{2cm}|p{2cm}|p{8cm}|p{3cm}|}
 \hline
 \textbf{ID} & \textbf{Type} & \textbf{Requirement} & \textbf{Associated User Stories} \\
@@ -11,46 +13,43 @@
 \hline
 \endhead
 
-FR1 & Functional & The system must collect real-time air quality data from multiple external sources (e.g., APIs, stations) and store it for further processing. & US1, US13, US14 \\ 
+FR1 & Functional & The system must periodically collect up-to-date air quality data from multiple external sources (e.g., APIs and monitoring stations) and store it for further processing. & US1, US13, US14 \\ 
 \hline
 
-FR2 & Functional & The system must allow users to query and visualize historical air quality data filtered by date, location, and pollutant type. & US2, US7 \\ 
+FR2 & Functional & The system must allow users to query and visualize historical air quality data filtered by date range, location, and pollutant type. & US2, US7 \\ 
 \hline
 
-FR3 & Functional & The system must display air quality information in a uniform and clear manner. The origin of the data is irrelevant. & US1, US3 \\ 
+FR3 & Functional & The system must display air quality information in a consistent and clear format, independently of the original data source. & US1, US3 \\ 
 \hline
 
-FR4 & Functional & The system must display real-time dashboards with key performance indicators (KPIs) on air quality. & US4 \\ 
+FR4 & Functional & The system must display dashboards with key air quality indicators (e.g., AQI, main pollutant, daily trends) based on the latest available data. & US4 \\ 
 \hline
 
-FR5 & Functional & The system must generate customized reports with filters for date, location, and indicators, available for download or email. & US5 \\ 
+FR5 & Functional & The system must generate custom reports with filters for date range, location, and selected indicators, and allow users to download these reports in standard formats. & US5 \\ 
 \hline
 
-FR6 & Functional & The system must present interactive graphs showing air quality evolution over time. & US6 \\ 
+FR6 & Functional & The system must present graphs showing the evolution of air quality over time, allowing users to interact with basic controls such as selecting date ranges or toggling pollutants. & US6 \\ 
 \hline
 
-FR7 & Functional & The system must allow users to export historical data in standard formats like CSV and JSON. & US7 \\ 
+FR7 & Functional & The system must allow users to export historical air quality data in standard formats such as CSV and JSON, based on the filters applied in the user interface. & US7 \\ 
 \hline
 
-FR8 & Functional & The system must provide personalized recommendations based on user location and air quality conditions. & US8 \\ 
+FR8 & Functional & The system must provide simple, rule-based recommendations based on the user's location and current air quality conditions (e.g., avoiding outdoor exercise, using a mask). & US8 \\ 
 \hline
 
-FR9 & Functional & The system must send customizable air quality alerts when thresholds are exceeded. & US9 \\ 
+FR9 & Functional & The system must send air quality alerts when configurable thresholds are exceeded, according to each user's notification preferences. & US9 \\ 
 \hline
 
-FR10 & Functional & The system must suggest certified protective products during high pollution periods. & US10 \\ 
-\hline
-
-FR11 & Functional & The system must display maps highlighting areas with better air quality for navigation. & US11 \\ 
+FR10 & Functional & \textit{(Optional)} The system may suggest appropriate protective measures and product categories (e.g., certified masks, air purifiers) during high pollution periods, as informational guidance only. & US10 \\ 
 \hline
 
 FR12 & Functional & The system must support geographic search for air quality data by country, city, or region. & US15 \\ 
 \hline
 
-FR13 & Functional & The system must be responsive and compatible with mobile, tablet, and desktop devices. & US16 \\ 
+FR13 & Functional & The system must provide a responsive web interface that works correctly on mobile, tablet, and desktop devices. & US16 \\ 
 \hline
 
-FR14 & Functional & The system must allow users to share air quality data and reports on social media with pre-generated links and previews. & US17 \\ 
+FR14 & Functional & \textit{(Optional)} The system may allow users to share links to selected air quality views or reports on social media platforms, using simple shareable URLs. & US17 \\ 
 \hline
 
 NFR1 & Non-Functional & Queries on large datasets (≥1 million records) must execute in under 2 seconds 95\% of the time. & US3, US12 \\ 
@@ -95,5 +94,13 @@ NFR10 & Non-Functional & Data consistency and user personalization must be prese
 \textbf{NFR5 (10 minutes update frequency):} Air quality APIs from external sources typically update their information every 10 minutes to 1 hour, making more frequent updates unnecessary and resource-intensive.
 
 \textbf{NFR6 (2 seconds data loading):} Critical safety information like air quality alerts must be delivered quickly to enable timely user decisions about outdoor activities and health precautions.
+
+\subsubsection*{Future Functional Requirements}
+
+The following functional requirements are considered beyond the baseline scope of this course and may be implemented in future phases:
+
+\begin{itemize}
+    \item \textbf{FR11:} In a future phase, the system may provide a basic map-based visualization that highlights areas with better or worse air quality using simple overlays on a web map. (Associated User Stories: US11)
+\end{itemize}
 
 \newpage
