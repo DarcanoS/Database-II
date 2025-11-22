@@ -1,24 +1,68 @@
 \section{Data System Architecture – Explanation}
 
+% Architecture section updated according to the revised design.
+% See _temp_corrections/Architecture_changes_spec.md for details.
+
+\subsection{Architecture overview}
+
+The Air Quality Platform adopts a simplified, layered architecture designed to meet the project's requirements without introducing unnecessary complexity. The system is organized into five main layers:
+
+\paragraph{Clients and web frontend}
+A single responsive web application serves as the primary client interface, providing tailored views for three distinct user roles: citizens seeking real-time air quality information, researchers analyzing trends and patterns, and technical administrators managing the platform's operation. This unified frontend eliminates the need for separate mobile applications or external business intelligence tools as first-class components.
+
+\paragraph{API layer}
+The platform exposes two REST-based JSON-over-HTTP endpoints. The Public REST API serves citizen and researcher requests for air quality data, historical trends, and alerts. The Admin REST API provides administrative functionality for system configuration, user management, and operational monitoring. GraphQL was intentionally excluded to maintain simplicity and reduce the learning curve for the development team.
+
+\paragraph{Data layer}
+A single PostgreSQL instance functions as both the operational and analytical data store, hosting core entities such as stations, readings, users, alerts, recommendations, and reports. The \texttt{AirQualityDailyStats} table stores pre-aggregated daily statistics to accelerate dashboard and reporting queries. A small NoSQL document store complements PostgreSQL by managing user-specific configuration data, specifically \texttt{user\_preferences} and \texttt{dashboard\_configs}, which exhibit flexible schemas unsuited to rigid relational tables.
+
+\paragraph{Batch jobs and background processing}
+Three scheduled components handle data ingestion and transformation. The Ingestion Job periodically pulls raw measurements from external air quality APIs. The Normalizer and Validator component standardizes units, normalizes timestamps, and handles missing or invalid values before storing clean readings in PostgreSQL. Finally, the Daily Aggregation Job runs once per day to populate \texttt{AirQualityDailyStats} with aggregated metrics.
+
+\paragraph{Observability}
+A single Application Logs component collects structured logs from all services—Public API, Admin API, Ingestion Job, Normalizer/Validator, and Daily Aggregation Job. This lightweight approach replaces the need for complex log ETL pipelines or dedicated observability stacks like Elasticsearch and Grafana, which exceed the scope of this academic project.
+
+\paragraph{Recommendations}
+The recommendation module provides health-related suggestions based on current pollution levels (e.g., recommending masks or limiting outdoor activities). It does not support e-commerce functionality or product sales.
+
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.8\textwidth]{Imagenes/Arquitectura.png}
-  \caption{High-level architecture diagram}
+  \includegraphics[width=0.9\textwidth]{Imagenes/Arquitectura.png}
+  \caption{High-level architecture of the Air Quality Platform}
+  \label{fig:architecture_overview}
 \end{figure}
 
-\subsection*{1. Ingestion and Raw Storage}
-A lightweight Python service (\textbf{Ingestor}) polls air quality endpoints at regular intervals. Each JSON payload is first persisted—unchanged—in a MinIO bucket (\texttt{raw-airquality}) to ensure auditability and allow for future replay.
+The architecture diagram (Figure~\ref{fig:architecture_overview}) illustrates the relationships between system components. Clients interact with the web frontend, which consumes the Public or Admin REST APIs. These APIs query both PostgreSQL and the NoSQL store. Meanwhile, batch jobs operate independently to ingest and transform data, writing structured logs to the Application Logs component for operational visibility.
 
-\subsection*{2. Normalization and Relational Store}
-A mapping layer converts heterogeneous field names, units, and AQI scales into a unified schema before inserting the data into a partitioned PostgreSQL database. Monthly partitions, created using TimescaleDB, reduce index scan sizes and ensure sub-second query performance for time-localized filters.
+\subsection{Information flow and data transformations}
 
-\subsection*{3. Query Acceleration}
-Materialized views are refreshed concurrently to avoid blocking read operations, providing fast access to aggregated insights.
+The platform implements a structured data pipeline that transforms raw measurements from external providers into actionable insights for end users. This flow ensures data quality, supports both real-time and historical analysis, and maintains system performance within acceptable bounds.
 
-\subsection*{4. API and User Access}
-An API layer exposes REST and GraphQL endpoints for citizens, researchers, and BI tools. Administrative users access the database through a dedicated API, while query latency and slow statements are monitored via Grafana dashboards.
+The pipeline begins when the Ingestion Job executes on a configurable schedule—typically every few minutes to every hour, depending on the update frequency of external air quality APIs. The job polls these endpoints and retrieves raw JSON payloads containing pollutant concentrations, timestamps, and station metadata. These payloads pass immediately to the Normalizer and Validator component, which performs critical transformations:
 
-% Performance and data volume estimates for the Air Quality Platform.
+\begin{itemize}
+  \item \textbf{Unit conversions}: Raw measurements may arrive in different units (e.g., µg/m³ vs. ppm). The normalizer standardizes all readings to a consistent unit system.
+  \item \textbf{Timestamp normalization}: External APIs may use different time zones or timestamp formats. The normalizer converts all timestamps to UTC and stores them in ISO 8601 format.
+  \item \textbf{Missing and invalid value handling}: Missing fields are flagged with \texttt{NULL}, while readings outside physically plausible ranges (e.g., negative concentrations) are logged and rejected.
+\end{itemize}
+
+Once validated, clean readings are inserted into the \texttt{AirQualityReading} table in PostgreSQL as individual records. This table grows at approximately 14,400 rows per day (50 stations × 3 pollutants × 96 readings per day), as detailed in the performance estimates subsection.
+
+The Daily Aggregation Job runs once per day—typically during off-peak hours—to compute per-day, per-station, per-pollutant aggregates. These aggregates (minimum, maximum, average, and 95th percentile values) are written into the \texttt{AirQualityDailyStats} table. This analytical table accelerates dashboard and reporting queries by eliminating the need to scan millions of raw readings for time-series visualizations or historical comparisons. The aggregation job adds approximately 150 rows per day to \texttt{AirQualityDailyStats}, yielding a total of 50,000–60,000 rows over a 3-year period.
+
+The Public and Admin REST APIs serve as the primary interface for data access. Both APIs read from PostgreSQL, selecting either raw readings (for recent, high-resolution data) or daily aggregates (for dashboards, reports, and trend analysis). The NoSQL document store provides supplementary data for personalized experiences, such as user-configured dashboard layouts and alert preferences.
+
+Finally, the web frontend consumes these REST APIs to render views for citizens, researchers, and administrators. Citizens view real-time air quality indices and receive threshold-based alerts. Researchers query historical trends and download datasets for offline analysis. Administrators monitor system health, configure stations, and review ingestion logs.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{Imagenes/Flujo_Informacion.png}
+  \caption{Information flow and data transformations}
+  \label{fig:information_flow}
+\end{figure}
+
+Figure~\ref{fig:information_flow} summarizes the end-to-end pipeline. This flow directly supports the platform's non-functional requirements: sub-second query performance (NFR1) is achieved through pre-aggregation and indexing, high data quality (NFR2) is ensured by the normalization and validation layer, and efficient report generation (NFR4, NFR6) leverages the \texttt{AirQualityDailyStats} table. The decision to use a single PostgreSQL instance with automated backups satisfies fault tolerance requirements (NFR7) without necessitating distributed databases or multi-region deployments, which remain outside the scope of this academic project (NFR8).
+
 % See _temp_corrections/Performance_Data_Estimates_spec.md
 \subsection{Performance and data estimates}
 
