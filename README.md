@@ -6,6 +6,7 @@ Welcome to the official repository for our **Databases 2** course project. This 
 
 - [`Workshop-1`](/Workshop-1/): Contains the files and deliverables for **Workshop 1**.
 - [`Workshop-2`](/Workshop-2/): Contains the files and deliverables for **Workshop 2**.
+- [`Workshop-3`](/Workshop-3/): Contains the files and deliverables for **Workshop 3**.
 - [`Catch-Up`](/Catch-Up/): Contains the final project deliverables (Paper, Poster, Report, and Slides).
 - [`docs`](/docs/): General project documentation and specifications for deliverables (Business Model, Database Architecture, Delivery Parameters, ER Diagrams).
 - [`src`](/src/): Source code for LaTeX documents and other deliverables. See [src/README.md](./src/README.md) for detailed information about compilation scripts.
@@ -27,6 +28,10 @@ You can find the deliverables and documentation for **Workshop 1** [here](./Work
 ## Workshop 2
 
 You can find the deliverables and documentation for **Workshop 2** [here](./Workshop-2/Workshop_2.pdf).
+
+## Workshop 3
+
+You can find the deliverables and documentation for **Workshop 3** [here](./Workshop-3/Workshop_3.pdf).
 
 ## Catch-Up
 
