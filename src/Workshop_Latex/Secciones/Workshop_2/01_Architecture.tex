@@ -27,7 +27,7 @@ The recommendation module provides health-related suggestions based on current p
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.9\textwidth]{Imagenes/Arquitectura.png}
+  \includegraphics[width=0.9\textwidth]{Imagenes/Architecture.png}
   \caption{High-level architecture of the Air Quality Platform}
   \label{fig:architecture_overview}
 \end{figure}
@@ -54,14 +54,7 @@ The Public and Admin REST APIs serve as the primary interface for data access. B
 
 Finally, the web frontend consumes these REST APIs to render views for citizens, researchers, and administrators. Citizens view real-time air quality indices and receive threshold-based alerts. Researchers query historical trends and download datasets for offline analysis. Administrators monitor system health, configure stations, and review ingestion logs.
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.9\textwidth]{Imagenes/Arquitectura.png}
-  \caption{Information flow and data transformations}
-  \label{fig:information_flow}
-\end{figure}
-
-Figure~\ref{fig:information_flow} summarizes the end-to-end pipeline. This flow directly supports the platform's non-functional requirements: sub-second query performance (NFR1) is achieved through pre-aggregation and indexing, high data quality (NFR2) is ensured by the normalization and validation layer, and efficient report generation (NFR4, NFR6) leverages the \texttt{AirQualityDailyStats} table. The decision to use a single PostgreSQL instance with automated backups satisfies fault tolerance requirements (NFR7) without necessitating distributed databases or multi-region deployments, which remain outside the scope of this academic project (NFR8).
+This end-to-end pipeline directly supports the platform's non-functional requirements: sub-second query performance (NFR1) is achieved through pre-aggregation and indexing, high data quality (NFR2) is ensured by the normalization and validation layer, and efficient report generation (NFR4, NFR6) leverages the \texttt{AirQualityDailyStats} table. The decision to use a single PostgreSQL instance with automated backups satisfies fault tolerance requirements (NFR7) without necessitating distributed databases or multi-region deployments, which remain outside the scope of this academic project (NFR8).
 
 % See _temp_corrections/Performance_Data_Estimates_spec.md
 \subsection{Performance and data estimates}
