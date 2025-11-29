@@ -368,3 +368,6 @@ Thumbs.db
 
 # Cache directories
 .cache/
+
+# Temporary files
+src/Workshop_Latex/_temp_corrections/
