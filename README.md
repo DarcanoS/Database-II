@@ -1,18 +1,19 @@
-# Databases 2 - Project Repository
 
-Welcome to the official repository for our **Databases 2** course project. This repository contains our work on the development of a system focused on air quality monitoring, real-time data ingestion, business intelligence, and personalized recommendations.
+# Databases II - Air Quality Platform
+
+Welcome to the official repository for our **Databases II** course project. This repository contains the development of a web platform for air quality data analysis, monitoring, and recommendations.
 
 ## Structure
 
-- [`Workshop-1`](/Workshop-1/): Contains the files and deliverables for **Workshop 1**.
-- [`Workshop-2`](/Workshop-2/): Contains the files and deliverables for **Workshop 2**.
-- [`Workshop-3`](/Workshop-3/): Contains the files and deliverables for **Workshop 3**.
-- [`Catch-Up`](/Catch-Up/): Contains the final project deliverables (Paper, Poster, Report, and Slides).
-- [`docs`](/docs/): General project documentation and specifications for deliverables (Business Model, Database Architecture, Delivery Parameters, ER Diagrams).
-- [`src`](/src/): Source code for LaTeX documents and other deliverables. See [src/README.md](./src/README.md) for detailed information about compilation scripts.
-- `README.md`: Project documentation and general information.
+- [`Workshop-1`](/Workshop-1/): Files and deliverables for Workshop 1.
+- [`Workshop-2`](/Workshop-2/): Files and deliverables for Workshop 2.
+- [`Workshop-3`](/Workshop-3/): Files and deliverables for Workshop 3.
+- [`Catch-Up`](/Catch-Up/): Final project deliverables (Paper, Poster, Report, Slides).
+- [`docs`](/docs/): General documentation and specifications (Business Model, Database Architecture, Delivery Parameters, ER Diagrams).
+- [`src`](/src/): Source code for LaTeX documents and other deliverables. See [src/README.md](./src/README.md) for compilation details.
+- [`Project`](/src/Project/): Main web platform source code and documentation. See below for details.
 
-##  Project Participants
+## Project Participants
 
 | Name                           | Student Code | Email                         |
 |--------------------------------|--------------|-------------------------------|
@@ -20,38 +21,29 @@ Welcome to the official repository for our **Databases 2** course project. This 
 | Johan Esteban Castaño Martínez | 20191020029  | joecastanom@udistrital.edu.co |
 | Stivel Pinilla Puerta          | 20191020027  | spinillap@udistrital.edu.co   |
 
+## Project: Air Quality Platform
 
-## Workshop 1
+This directory contains the development of a web platform for air quality data consultation and analysis.
 
-You can find the deliverables and documentation for **Workshop 1** [here](./Workshop-1/Workshop_1.pdf).
+### 📁 Project Structure
 
-## Workshop 2
+- **`docs/`**: Global documentation for the project.
+- **`backend/`**: REST API developed in Python with FastAPI.
+- **`frontend/`**: Web application developed in Vue 3.
+- **`database/`**: Database management (PostgreSQL + PostGIS).
+- **`ingestion/`**: Service for external air quality data ingestion.
 
-You can find the deliverables and documentation for **Workshop 2** [here](./Workshop-2/Workshop_2.pdf).
+### 🚀 Main Technologies
 
-## Workshop 3
-
-You can find the deliverables and documentation for **Workshop 3** [here](./Workshop-3/Workshop_3.pdf).
-
-## Catch-Up
-
-The **Catch-Up** deliverables include the following documents:
-
-- [Paper](./Catch-Up/Paper.pdf) – Academic paper documenting the project research and findings.
-- [Poster](./Catch-Up/Poster.pdf) – Visual presentation summarizing the key aspects of the project.
-- [Report](./Catch-Up/Report.pdf) – Comprehensive report detailing the project development and results.
-- [Slides](./Catch-Up/Slides.pdf) – Presentation slides for project exposition.
-
-<!-- ## Technologies Used
-
-- **PostgreSQL** – Relational database for structured data and transactional integrity.
-- **MongoDB** – Document-oriented database for unstructured and scalable data storage.
-- **GeoJSON / PostGIS** – Spatial data handling and geolocation support. -->
-
+- **Frontend**: Vue 3, TypeScript
+- **Backend**: Python, FastAPI
+- **Database**: PostgreSQL + PostGIS
+- **Configurations**: MongoDB (NoSQL)
+- **Containerization**: Docker
 
 ## License
 
-This project is licensed under the [MIT License](./LICENSE). It is for academic purposes only and follows the guidelines of the **Databases 2** course at Francisco José de Caldas District University.
+This project is licensed under the [MIT License](./LICENSE). It is for academic purposes only and follows the guidelines of the Databases II course at Francisco José de Caldas District University.
 
 ---
 
