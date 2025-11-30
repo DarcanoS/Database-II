@@ -49,6 +49,12 @@ env/
 htmlcov/
 .tox/
 
+# Diagnostic and temporary test scripts
+diagnostico_*.py
+test_db_connection.py
+verify_*.py
+verify_*.sh
+
 # Logs
 *.log
 
