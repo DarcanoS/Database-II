@@ -7,24 +7,61 @@ This chapter interprets the planned architecture and expected performance metric
 \section{Architectural Design Decisions}
 \label{sec:architecture_discussion}
 
-The choice of TimescaleDB-augmented PostgreSQL over distributed streaming frameworks (Kafka/Flink/Spark) represents a deliberate trade-off between operational complexity and performance requirements. For the Bogotá single-city deployment with 10-minute ingestion intervals, TimescaleDB's monthly-partitioned hypertables and continuous aggregates provide sufficient query performance without requiring multi-node cluster management, complex stream topology design, or distributed consensus protocols.
+The selection of a PostgreSQL engine extended with TimescaleDB was guided by a balance between operational simplicity, analytical performance, and the functional requirements of a real-time environmental monitoring system. PostgreSQL provides a robust relational foundation for transactional integrity, geospatial processing, and structured domain entities, while TimescaleDB adds purpose-built optimizations for high-volume time-series ingestion and temporal analytics. This hybrid model offers a unified environment capable of supporting both OLTP-style interactions (user management, alerts, system metadata) and OLAP-style time-series exploration without the overhead of managing heterogeneous database engines.
 
-\textbf{Strengths of the chosen approach:}
+\subsection*{Rationale for Choosing PostgreSQL + TimescaleDB}
+
+PostgreSQL was selected as the primary relational core due to its maturity, ACID compliance, and extensive ecosystem of extensions, including PostGIS for geospatial operations. TimescaleDB introduces hypertables, automatic chunking, and continuous aggregates, which are particularly well suited for periodic air-quality measurements ingested every 10 minutes. These features eliminate the need for manual partition management and support efficient analytical queries over long-term historical datasets. Compared to distributed stream-processing frameworks (Kafka, Flink, Spark), this architecture reduces operational complexity while remaining fully capable of meeting projected ingestion and query demands for the single-city Bogotá deployment.
+
+\textbf{Additional advantages include:}
 \begin{itemize}
-    \item \textbf{SQL familiarity}: PostgreSQL's mature ecosystem and standard SQL interface reduce the learning curve for developers and researchers querying air quality data.
-    \item \textbf{Operational simplicity}: Single-node deployment (with optional read replicas) avoids the operational overhead of coordinating distributed brokers, stream processors, and state stores.
-    \item \textbf{Time-series optimization}: TimescaleDB's automatic chunk management, native time-based partitioning, and continuous aggregates are purpose-built for time-series workloads and eliminate the need for manual partition maintenance.
-    \item \textbf{Cost efficiency}: Leveraging open-source components (PostgreSQL, TimescaleDB, MinIO, Grafana) minimizes licensing costs and enables flexible deployment on cloud or on-premises infrastructure.
+    \item \textbf{SQL familiarity}: Researchers and engineers can work with standard SQL across both relational and time-series domains, lowering the adoption barrier.
+    \item \textbf{Operational simplicity}: A single-node architecture (optionally extended with read replicas) avoids the coordination challenges inherent to distributed consensus systems and multi-broker pipelines.
+    \item \textbf{Cost efficiency}: The solution relies entirely on open-source technologies, allowing flexible deployment in cloud or on-premises environments with minimal licensing overhead.
+    \item \textbf{Time-series optimization}: TimescaleDB provides native time-based partitioning, compression, retention policies, and continuous aggregates.
 \end{itemize}
 
-\textbf{Trade-offs and constraints:}
+\subsection*{Table, Relationship, and Partitioning Design}
+
+The schema design followed a hybrid relational--time-series approach:
+
 \begin{itemize}
-    \item \textbf{Scaling limits}: The single-node architecture is suitable for Bogotá's 10-minute update cycle but may require re-architecting for sub-minute ingestion or multi-city deployments with thousands of stations.
-    \item \textbf{Stream processing}: The current batch-oriented ingestion pipeline lacks the real-time windowing, watermark handling, and exactly-once semantics provided by dedicated stream processors like Flink.
-    \item \textbf{Fault tolerance}: While PostgreSQL supports replication and failover, distributed systems like Kafka offer stronger guarantees for message durability and replay in the event of data corruption or node failures.
+    \item \textbf{Core relational tables} store users, alert configurations, station metadata, pollutant definitions, API sources, and system logs. These relationships were normalized to Third Normal Form (3NF) to ensure data consistency and reduce redundancy.
+    \item \textbf{Time-series hypertables} store raw and processed air-quality measurements. Hypertables were partitioned on a monthly time interval, balancing query performance with manageable chunk sizes.
+    \item \textbf{Materialized relationships} such as station-to-city mappings and pollutant classification tables support efficient joins from the relational layer into the time-series domain.
+    \item \textbf{Continuous aggregates} were defined for common analytical queries (e.g., hourly averages, daily maximums), reducing query load on the raw measurement table.
 \end{itemize}
 
-The planned load testing with 1000 concurrent users will validate whether the chosen architecture meets performance targets (NFR1--NFR8). If p95 latency exceeds 2 seconds under production load, mitigation strategies include read replicas for dashboard traffic separation, Redis caching for frequently accessed queries, and incremental adoption of message queues (RabbitMQ or Kafka) for fully asynchronous ingestion pipelines.
+This structure allows ingestion, storage, and analytical processing to operate without contention, while ensuring that long-term historical data remains query-efficient.
+
+\subsection*{Geographical Storage and Raw Layer Decisions}
+
+Because air-quality data is inherently spatial, the platform incorporates PostGIS to support geographic indexing, distance calculations, polygon intersection queries, and spatial clustering algorithms. Storing stations, regions, and administrative boundaries as geospatial objects allows the system to answer spatial queries such as nearest-station lookup or zone-based pollution alerts.
+
+A raw ingestion layer was introduced to preserve unprocessed API responses before transformation. This layer supports:
+
+\begin{itemize}
+    \item reproducibility of experiments,
+    \item ingestion auditing,
+    \item debugging of anomalous measurements, and
+    \item reprocessing pipelines without requiring API re-queries.
+\end{itemize}
+
+Raw data is stored in a schemaless JSON column, while normalized and validated readings are inserted into structured time-series tables. This dual-storage approach provides flexibility without sacrificing schema consistency.
+
+\subsection*{Justification for a Hybrid Relational + Time-Series Architecture}
+
+A purely relational model would struggle with the scale and access patterns of high-frequency sensor data, while a pure time-series engine would lack the transactional guarantees and flexible schema needed for the system's broader functionality. The hybrid architecture was therefore chosen to achieve:
+
+\begin{itemize}
+    \item \textbf{High-throughput ingestion} optimized by TimescaleDB hypertables.
+    \item \textbf{Complex relational joins} necessary for user and alert management.
+    \item \textbf{Geospatial processing} enabled by PostGIS extensions.
+    \item \textbf{Efficient long-term analytics} through continuous aggregates and compressible chunks.
+    \item \textbf{Future extensibility} into distributed or multi-region deployments.
+\end{itemize}
+
+This design ensures robustness for the current Bogotá deployment while providing a clear pathway toward horizontal scalability through partitioning, replication, and eventual migration to distributed database backends if multi-city ingestion or sub-minute update cycles become required.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Significance of the Findings}
