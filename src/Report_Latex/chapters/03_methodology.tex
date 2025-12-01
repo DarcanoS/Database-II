@@ -79,7 +79,7 @@ This section details the methods, data flows, and experimental procedures used t
 Data is collected by a Python-based ingestion service configured to poll selected external APIs every 10 minutes. Each poll performs the following steps:
 \begin{enumerate}
     \item Retrieve JSON payloads for Bogotá and related stations from AQICN, Google Air Quality API, and IQAir endpoints.
-    \item Persist the raw JSON to MinIO under a versioned key with schema: \texttt{raw-airquality/YYYY/MM/DD/HHMM\_source\_station.json} for auditability and reprocessing.
+    \item Persist the raw JSON to MinIO under a versioned key with schema: \texttt{raw-airquality/YYYY/MM/DD/HHMM\_source\_station.json} for auditability and reprocessing. This raw layer is retained for 7 days, aligning with log-retention requirements and enabling deterministic replay during ingestion failures.
     \item Emit a lightweight validation check (schema presence, timestamp parseable, sensor id) and place invalid payloads into a quarantine bucket for manual inspection.
     \item Forward valid payloads to the normalizer via an in-process call (or message queue in future iterations).
 \end{enumerate}
@@ -92,18 +92,22 @@ The normalizer maps each provider-specific payload to a unified relational schem
     \item Field mapping: provider fields (for example, \texttt{pm25}, \texttt{PM2\_5} or \texttt{pm\_2\_5}) are normalized to the canonical column name \texttt{pm25}.
     \item Unit harmonization: concentrations are converted to standard units (\(\mu\)g/m\(^{3}\)) where necessary.
     \item AQI conversion: when providers publish different AQI scales, the normalizer converts pollutant concentrations into the chosen standard AQI scale (EPA or WHO mappings) to keep recommendations consistent.
-    \item Persistence: insert normalized records into the \texttt{airquality\_reading} hypertable partitioned by month and city (TimescaleDB). Each insert is executed in a short transaction and uses identifiers such as \texttt{station\_id} and \texttt{pollutant\_id} with a uniqueness constraint on (\texttt{station\_id}, \texttt{pollutant\_id}, \texttt{datetime}) to avoid duplicates.
+    \item Persistence: insert normalized records into the \texttt{airquality\_reading} hypertable partitioned by month and city. TimescaleDB’s automatic chunk creation manages long-term partitioning, while compression policies are applied to chunks older than 90 days to reduce storage costs. A uniqueness constraint on (\texttt{station\_id}, \texttt{pollutant\_id}, \texttt{datetime}) prevents duplicate readings.
 \end{itemize}
 
 \subsection{Query Acceleration and Indexing}
 \label{subsec:method_query}
 
-To support sub-2-second p95 latency targets the system uses multiple optimization techniques:
+To support sub-2-second p95 latency targets, the system uses several optimization techniques designed specifically for high-volume time-series workloads:
+
 \begin{itemize}
-    \item Concurrently refreshed materialized views for pre-computed aggregation windows (15-minute, hourly, daily) and for common dashboard queries.
-    \item Composite B-tree indexes on (\texttt{timestamp}, \texttt{station\_id}, \texttt{pollutant\_id}) and partial indexes that cover recent data (for example, the last 30 days).
-    \item BRIN indexes for very large historical partitions; BRIN reduces index size and maintenance overhead for old chunks.
-    \item TimescaleDB continuous aggregates for frequently requested rollups to reduce on-demand computation costs.
+    \item \textbf{Materialized views}: concurrently refreshed materialized views store pre-computed aggregation windows (15-minute, hourly, daily) for common dashboard queries. These views reduce repeated CPU-intensive operations during high-traffic periods.
+    \item \textbf{TimescaleDB continuous aggregates}: used for rolling-window AQI summaries and pollutant-level trend analysis. Continuous aggregates handle automated backfilling when late-arriving data is ingested.
+    \item \textbf{Hypertable partitioning}: the primary hypertable uses monthly time partitions and secondary space partitions by city, balancing ingest speed with efficient historical queries.
+    \item \textbf{Composite indexes}: B-tree indexes on (\texttt{timestamp}, \texttt{station\_id}, \texttt{pollutant\_id}) accelerate time-filtered and station-specific lookups. Partial indexes covering only the last 30 days optimize recent-data queries without bloating index size.
+    \item \textbf{BRIN indexes}: applied on older partitions to minimize disk usage while still enabling efficient scans during historical or research-oriented analyses.
+    \item \textbf{Optional caching layer}: frequently requested aggregates (for example, “current Bogotá AQI” or “hourly PM2.5 trend”) can be cached in Redis with a TTL of 60–120 seconds to further reduce compute overhead during peak usage.
+    \item \textbf{Query-plan validation}: all long-running queries (dashboards, CSV export, recommendation engine input) were analyzed using \texttt{EXPLAIN} and \texttt{EXPLAIN ANALYZE} to identify sequential scans, misaligned indexes, or inefficient joins. These findings directly informed index creation and materialized view design.
 \end{itemize}
 
 \subsection{API Layer and Services}
@@ -113,7 +117,7 @@ The API layer exposes both REST and GraphQL endpoints. Key design choices:
 \begin{itemize}
     \item Authentication: lightweight token-based authentication for researchers and admin users; public endpoints for citizen dashboards limit per-IP rate to protect upstream APIs and database load.
     \item Endpoints: summary endpoints for current AQI, rolling-window endpoints for time series (GraphQL supports nested queries), and CSV export endpoints for researchers.
-    \item Observability: Prometheus metrics exposed for ingest latency, API response times, materialized view refresh duration, and DB query statistics; Grafana dashboards visualize these metrics.
+    \item Observability: Prometheus metrics exposed for ingest latency, API response times, materialized view refresh duration, and DB query statistics; Grafana dashboards visualize these metrics. Alerts are configured for ingestion delays, 4xx/5xx API error spikes, and anomalies in continuous aggregate refresh times.
 \end{itemize}
 
 \subsection{Recommendation Engine}
@@ -132,9 +136,9 @@ The recommendation engine is rule-based and deterministic. Implementation highli
 
 Planned experiments to validate system properties:
 \begin{itemize}
-    \item \textbf{Dataset ingestion}: ingest three years (2022--2024) of Bogotá historical data into the hypertable and measure storage growth and ingest throughput.
+    \item \textbf{Dataset ingestion}: ingest three years (2022--2024) of Bogotá historical data into the hypertable and measure storage growth, ingest throughput, and compression ratio.
     \item \textbf{Load testing}: use Apache JMeter to simulate up to 1000 concurrent users issuing dashboard and CSV-export requests. Measure p95 latency, throughput, CPU and I/O utilization.
-    \item \textbf{Materialized view refresh tests}: measure refresh duration of key views under varying chunk sizes and concurrency; tune chunk time intervals and refresh schedule based on results.
+    \item \textbf{Materialized view and continuous aggregate testing}: measure refresh duration of key views under varying chunk sizes and concurrency; evaluate the impact of compression policies and backfill behavior on refresh latency.
     \item \textbf{Fault-injection}: emulate API downtime and delayed ingestion to validate replay from MinIO and quarantine/reprocessing procedures.
 \end{itemize}
 
