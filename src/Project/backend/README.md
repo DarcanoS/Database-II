@@ -37,10 +37,9 @@ RESTful API backend for the Air Quality Monitoring Platform built with Python an
    # Edit .env with your database credentials and configuration
    ```
 
-5. **Run database migrations** (if using Alembic):
-   ```bash
-   alembic upgrade head
-   ```
+5. **Initialize database:**
+   
+   Make sure your PostgreSQL and MongoDB instances are running. The application will create tables automatically on first run using SQLAlchemy.
 
 6. **Start the development server:**
    ```bash
@@ -53,15 +52,10 @@ The API will be available at `http://localhost:8000`
 
 ## 📚 Documentation
 
-### API Documentation
-- **API Contract**: [API_CONTRACT.md](./API_CONTRACT.md) - Complete endpoint documentation
-- **Testing Guide**: [TESTING_GUIDE.md](./TESTING_GUIDE.md) - cURL and Postman examples
-- **Frontend Integration**: [FRONTEND_INTEGRATION_GUIDE.md](./FRONTEND_INTEGRATION_GUIDE.md) - Guide for frontend developers
-
 ### Interactive API Docs
 Once the server is running, visit:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+- **Swagger UI**: http://localhost:8000/docs - Interactive API documentation
+- **ReDoc**: http://localhost:8000/redoc - Alternative API documentation view
 
 ---
 
@@ -91,24 +85,22 @@ backend/
 │   │   ├── security.py         # JWT and authentication
 │   │   └── logging_config.py   # Logging configuration
 │   ├── db/                     # Database layer
-│   │   ├── base.py            # Base models
-│   │   ├── session.py         # Database sessions
-│   │   └── mongodb.py         # MongoDB connection
+│   │   ├── base.py             # Base models
+│   │   ├── session.py          # Database sessions
+│   │   └── mongodb.py          # MongoDB connection
 │   ├── models/                 # ORM models
 │   ├── schemas/                # Pydantic schemas
 │   ├── repositories/           # Data access layer
 │   ├── services/               # Business logic
-│   │   ├── dashboard_service/ # Dashboard aggregation
+│   │   ├── dashboard_service/  # Dashboard aggregation
 │   │   ├── recommendation_service/ # Recommendation engine
-│   │   ├── reporting/         # Report generation
-│   │   └── risk_category/     # Risk assessment
-│   ├── api/                    # API endpoints
-│   │   └── v1/                # API version 1
-│   │       └── endpoints/     # Route handlers
-│   └── tests/                  # Test suite
-├── docs/                       # Design pattern documentation
+│   │   ├── reporting/          # Report generation
+│   │   └── risk_category/      # Risk assessment
+│   └── api/                    # API endpoints
+│       └── v1/                 # API version 1
+│           └── endpoints/      # Route handlers
 ├── requirements.txt            # Python dependencies
-├── pytest.ini                  # Pytest configuration
+├── setup.py                    # Package configuration
 └── Dockerfile                  # Docker configuration
 ```
 
@@ -123,48 +115,31 @@ Create a `.env` file based on `.env.example`:
 ```bash
 # API Configuration
 API_V1_STR=/api/v1
-PROJECT_NAME=Air Quality API
-
-# PostgreSQL Database
-POSTGRES_USER=air_quality_app
-POSTGRES_PASSWORD=your_password
-POSTGRES_SERVER=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=air_quality_db
-
-# MongoDB (Optional)
-MONGODB_URL=mongodb://localhost:27017
-MONGODB_DB=air_quality_config
-
-# Security
-SECRET_KEY=your-secret-key-here
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+PROJECT_NAME=Air Quality Platform API
+VERSION=1.0.0
 
 # CORS
-BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:5173"]
+BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:5173","http://localhost:8080"]
+
+# Database (PostgreSQL + PostGIS)
+DATABASE_URL=postgresql://air_quality_app:password@localhost:5432/air_quality_db
+
+# JWT Authentication
+JWT_SECRET_KEY=your-super-secret-key-change-this-in-production-min-32-chars
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# NoSQL (MongoDB for settings)
+NOSQL_URI=mongodb://air_quality_app:password@localhost:27017/air_quality_config?authSource=air_quality_config
+NOSQL_DB_NAME=air_quality_config
 
 # Logging
 LOG_LEVEL=INFO
-```
+LOG_FORMAT=%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
----
-
-## 🧪 Testing
-
-### Run Tests
-```bash
-pytest
-```
-
-### Run with Coverage
-```bash
-pytest --cov=app --cov-report=html
-```
-
-### Test Specific Module
-```bash
-pytest app/tests/test_air_quality.py
+# Application Settings
+FIRST_SUPERUSER_EMAIL=admin@airquality.com
+FIRST_SUPERUSER_PASSWORD=admin123
 ```
 
 ---
@@ -202,7 +177,7 @@ pytest app/tests/test_air_quality.py
 - `POST /api/v1/reports` - Generate report
 - `GET /api/v1/reports` - List user reports
 
-See [API_CONTRACT.md](./API_CONTRACT.md) for complete documentation.
+For complete endpoint details, parameters, and response schemas, visit the interactive API documentation at `/docs` when the server is running.
 
 ---
 
@@ -264,8 +239,7 @@ docker-compose up -d
 ### Code Style
 - Follow PEP 8 guidelines
 - Use type hints
-- Document complex logic
-- Write tests for new features
+- Document complex logic with clear comments
 
 ### Adding New Endpoints
 
@@ -274,7 +248,6 @@ docker-compose up -d
 3. Implement service in `app/services/`
 4. Add endpoint in `app/api/v1/endpoints/`
 5. Register route in `app/api/v1/router.py`
-6. Write tests in `app/tests/`
 
 ---
 
@@ -287,28 +260,6 @@ docker-compose up -d
 
 ---
 
-## 🐛 Troubleshooting
-
-### Database Connection Issues
-```bash
-# Test database connection
-python test_db_connection.py
-```
-
-### Import Errors
-```bash
-# Verify imports
-python test_imports.py
-```
-
-### Environment Issues
-```bash
-# Verify environment configuration
-python verify_env.py
-```
-
----
-
 ## 📝 License
 
 [Your License Here]
@@ -317,10 +268,10 @@ python verify_env.py
 
 ## 👥 Contributing
 
-1. Follow Git Flow methodology (see `/docs/GIT_FLOW.md`)
+1. Follow Git Flow methodology (see `src/Project/docs/GIT_FLOW.md`)
 2. Create feature branches from `develop`
-3. Write tests for new features
-4. Update documentation
+3. Follow code style guidelines
+4. Update documentation as needed
 5. Submit pull request to `develop`
 
 ---
@@ -329,4 +280,4 @@ python verify_env.py
 
 For questions or issues, contact the backend development team.
 
-**Last Updated**: November 30, 2025
+**Last Updated**: December 1, 2025
