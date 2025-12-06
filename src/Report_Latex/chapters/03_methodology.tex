@@ -201,6 +201,8 @@ Data is collected by a Python-based ingestion service configured to poll selecte
     \item Forward valid payloads to the normalizer via an in-process call (or message queue in future iterations).
 \end{enumerate}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \subsection{Normalization and Storage}
 \label{subsec:method_normalization}
 
@@ -211,6 +213,9 @@ The normalizer maps each provider-specific payload to a unified relational schem
     \item AQI conversion: when providers publish different AQI scales, the normalizer converts pollutant concentrations into the chosen standard AQI scale (EPA or WHO mappings) to keep recommendations consistent.
     \item Persistence: insert normalized records into the \texttt{airquality\_reading} hypertable partitioned by month and city. TimescaleDB’s automatic chunk creation manages long-term partitioning, while compression policies are applied to chunks older than 90 days to reduce storage costs. A uniqueness constraint on (\texttt{station\_id}, \texttt{pollutant\_id}, \texttt{datetime}) prevents duplicate readings.
 \end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \subsection{Indexing and Query Optimization}
 \label{subsec:method_indexing}
 
@@ -290,6 +295,8 @@ ON airquality_reading USING BRIN (datetime);
 \textit{Rationale:}
 BRIN indexing minimizes disk usage and enables efficient scans across multi-year partitions.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \subsubsection{Query Optimization Techniques}
 
 Beyond indexing, the system integrates several additional optimization mechanisms designed for large-scale time-series workloads.
@@ -332,6 +339,66 @@ All optimizations were validated using:
 
 This methodology ensured that every index or optimization produced measurable improvements in latency, I/O efficiency, and overall system throughput.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Concurrency Analysis}
+\label{subsec:method_concurrency}
+
+Given the system’s dual nature—high-frequency ingestion of time-series air-quality data and simultaneous analytical workloads—concurrency management becomes a critical aspect of the platform’s methodology. This subsection examines the primary concurrency scenarios, the risks associated with them, and the mitigation strategies adopted to maintain system stability and low-latency performance under load.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{Concurrency Scenarios}
+
+\paragraph{1. Data Ingestion vs. Analytical Queries}
+The ingestion pipeline inserts new measurements every 10 minutes across multiple stations. Meanwhile, analysts and automated dashboards perform read-heavy operations on the most recent data. This creates potential contention on the main hypertable, particularly on hot partitions that receive continuous writes.
+
+\paragraph{2. Concurrent Web Users}
+Multiple end users and dashboards may query pollutant trends, AQI summaries, and forecast endpoints simultaneously. These workloads are predominantly read-heavy, increasing pressure on indexes, cached aggregates, and continuous-aggregate refresh processes.
+
+\paragraph{3. Batch Processes Concurrent With Reads}
+Periodic maintenance tasks—such as archiving old partitions, refreshing materialized views, or performing data-quality checks—may overlap with real-time read workloads. If not properly scheduled, these tasks may hold locks on hypertable chunks or indexes.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{Concurrency Risks}
+
+\begin{itemize}
+    \item \textbf{Table or Chunk Contention:} Frequent inserts on the most recent time partition may collide with analytical queries scanning the same chunk, especially if missing indexes force sequential scans.
+    \item \textbf{Row-Level Locking and Block Escalation:} Although TimescaleDB avoids table-level locks during inserts, exceptional analytical updates or deletes may escalate to page-level locks when processing large batches.
+    \item \textbf{Deadlock Potential:} Concurrent refreshes of continuous aggregates, ingestion operations, and long-running analytical queries may attempt to access metadata tables or chunk indexes in incompatible lock modes.
+    \item \textbf{Maintenance vs. Query Latency Impact:} VACUUM operations, reindexing, or chunk compression may temporarily degrade performance if executed during high-load periods.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{Mitigation Strategies}
+
+\paragraph{1. Index and Query Design to Reduce Lock Duration}
+Well-aligned composite indexes (e.g., \texttt{(station\_id, datetime)}, \texttt{(pollutant\_id, datetime)}) enable index-only scans, reducing lock duration and avoiding heap access. Partial indexes on recent data prevent unnecessary contention with historical partitions.
+
+\paragraph{2. Row-Level Lock Granularity}
+PostgreSQL’s MVCC model isolates readers from writers using row-level versioning, ensuring that analytical queries do not block ingestion inserts. This minimizes read-write conflicts across the system.
+
+\paragraph{3. Strategic Hypertable Partitioning}
+Monthly time partitions and additional space partitioning by city isolate write operations to recent chunks, enabling historical reads to execute concurrently without interference.
+
+\paragraph{4. Transaction Isolation Considerations}
+The system operates primarily under \texttt{READ COMMITTED}, which supports high ingestion throughput without blocking readers. Long-running reports may optionally use \texttt{REPEATABLE READ} to ensure snapshot consistency.
+
+\paragraph{5. Scheduling and Throttling of Maintenance Jobs}
+Maintenance tasks such as continuous aggregate refreshes, VACUUM/ANALYZE, and chunk compression are scheduled during periods of low user activity. TimescaleDB background workers also stagger refresh jobs to minimize lock overlap.
+
+\paragraph{6. Optional Caching Layer}
+Caching frequently requested endpoints (e.g., current AQI per city, hourly pollutant summaries) in Redis reduces query pressure on the hypertable during high concurrency periods, lowering lock contention and CPU load.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{Concurrency Validation}
+
+Concurrency behavior was evaluated through parallel load tests simulating simultaneous ingestion and dashboard queries. Lock wait events were monitored using \texttt{pg\_stat\_activity} and \texttt{pg\_locks}, and execution latency was compared before and after index creation and caching enablement. TimescaleDB telemetry was used to identify chunk-level contention. Results show that the chosen partitioning model, indexing strategy, and read/write separation maintained stable ingestion throughput and sustained sub-2-second p95 API latency under concurrent workloads.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{API Layer and Services}
 \label{subsec:method_api}
