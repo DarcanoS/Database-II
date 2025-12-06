@@ -68,48 +68,127 @@ This project has several limitations that affect interpretation and generalizati
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Methodology}
-\label{sec:method_method}
-
-This section details the methods, data flows, and experimental procedures used to design, implement, and validate the system. The methodology is organized by functional component: data ingestion, normalization and storage, query acceleration, API layer, recommendation engine, and performance validation.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{Database Design Methodology}
 \label{subsec:method_dbdesign}
 
-The database design followed an evidence-driven, iterative process that connected the conceptual domain model with the operational constraints of a real-time air-quality system. The process comprised three stages: conceptual modeling, logical modeling, and physical implementation.
+The database design for the air-quality monitoring platform followed an iterative, evidence-driven methodology grounded in the hybrid nature of the system, which integrates real-time data ingestion, geospatial storage, and historical analytics. The methodology was developed in three major phases: conceptual modeling, logical modeling, and physical implementation. Each phase was aligned with the functional requirements of the platform, including 10-minute ingestion cycles, optimized queries for citizen-facing dashboards, and hybrid storage in PostgreSQL/TimescaleDB and MongoDB.
 
-\subsubsection*{Conceptual Modeling}
-A high-level conceptual model was developed to capture the core entities and relationships derived from the data sources (AQICN, Google Air Quality API, IQAir) and user-facing requirements. The conceptual schema includes entities such as \textit{Station}, \textit{Reading}, \textit{Pollutant}, \textit{User}, \textit{Alert}, and \textit{Preference}. Relationships reflect real-world dependencies: stations emit readings, readings reference pollutants, and users subscribe to alerts or personalized recommendation rules.
+\subsubsection{Conceptual Modeling}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+In this phase, a conceptual model was constructed to capture the essential elements of the air-quality ecosystem in Bogotá. The schema was derived from three main sources:
 
-\subsubsection*{Logical Modeling}
-The conceptual schema was transformed into a relational logical model aligned with PostgreSQL and TimescaleDB requirements. Key decisions included:
 \begin{itemize}
-    \item Normalizing measurements into a unified table (\texttt{airquality\_reading}) with foreign keys to \texttt{station}, \texttt{pollutant}, and \texttt{city}.
-    \item Defining unique constraints on (\texttt{station\_id}, \texttt{pollutant\_id}, \texttt{datetime}) to prevent duplicate readings from multiple providers.
-    \item Introducing reference tables for pollutant metadata, AQI conversion parameters, and station geospatial attributes.
-    \item Structuring user-centric entities (users, preferences, alerts) to support recommendation logic and system observability.
+    \item The structures published by external APIs (AQICN, Google Air Quality API, and IQAir).
+    \item Functional requirements for citizen users, technical administrators, researchers, and public-policy managers.
+    \item Operational needs of the system: ingestion, visualization, recommendations, and historical analysis.
 \end{itemize}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+The main conceptual entities identified were:
 
-\subsubsection*{Physical Implementation}
-The logical model was materialized using a hybrid architecture that combines PostgreSQL, TimescaleDB, and MongoDB. The physical layer incorporates the following design decisions:
 \begin{itemize}
-    \item Creation of a hypertable partitioned by time and city to support high-frequency ingestion and efficient range queries.
-    \item Use of TimescaleDB compression for historical partitions to reduce storage cost.
-    \item Implementation of materialized views and continuous aggregates for pre-computed time windows used by dashboards.
-    \item Adoption of B-tree, partial, and BRIN indexes depending on data temperature (recent vs. historical).
-    \item Delegation of unstructured or semi-structured metadata (API payloads, device profiles) to MongoDB collections for flexible querying.
+    \item \textbf{Station}: represents measurement stations, both official and external.
+    \item \textbf{Reading}: stores pollutant observations per station and timestamp.
+    \item \textbf{Pollutant}: defines metadata and AQI conversion parameters.
+    \item \textbf{City}: key entity for future multi-city extension.
+    \item \textbf{User} and \textbf{Preference}: support personalization and alert configuration.
+    \item \textbf{Alert}: mechanism for generating notifications under critical conditions.
+    \item \textbf{RawPayload} (conceptual): represents temporary and unstructured storage in MinIO/MongoDB.
 \end{itemize}
 
-This design methodology provides a coherent bridge between real-time ingestion requirements, analytical workloads, and the system’s performance targets. The resulting physical schema underpins all subsequent components described in the methodology section.
+Key conceptual relationships include:
+
+\begin{itemize}
+    \item A station generates multiple readings.
+    \item Readings are associated with a pollutant and a city.
+    \item Users define preferences, which trigger alerts and recommendations.
+\end{itemize}
+
+\subsubsection{Logical Modeling}
+
+In the logical modeling phase, the conceptual schema was transformed into a set of relational tables designed specifically for PostgreSQL and TimescaleDB. The main design decisions were the following:
+
+\begin{itemize}
+    \item \textbf{Unification of all measurements into a single table \texttt{airquality\_reading}} with foreign keys to:
+    \begin{itemize}
+        \item \texttt{station}
+        \item \texttt{pollutant}
+        \item \texttt{city}
+    \end{itemize}
+
+    \item \textbf{Definition of a composite unique key}  
+    \[
+    (\textit{station\_id},\ \textit{pollutant\_id},\ \textit{datetime})
+    \]
+    to prevent duplicated readings from multiple data providers reporting the same station.
+
+    \item \textbf{Normalized reference tables}, including:
+    \begin{itemize}
+        \item \texttt{pollutant} with AQI conversion parameters,
+        \item \texttt{station} with geospatial coordinates and metadata,
+        \item \texttt{provider} for full data traceability.
+    \end{itemize}
+
+    All reference tables were normalized up to Third Normal Form (3NF) 
+    to eliminate redundancy, ensure attribute dependency integrity, 
+    and support efficient indexing.
+
+
+    \item \textbf{User-centered modeling}, with:
+    \begin{itemize}
+        \item \texttt{user}
+        \item \texttt{user\_preference}
+        \item \texttt{user\_alert}
+    \end{itemize}
+    designed to support recommendations, notifications, and segmentation features.
+
+    \item \textbf{Semantic separation of raw data}:  
+    unprocessed or semi-structured payloads are stored in MinIO (files) and MongoDB (documents), ensuring that schema-flexible data does not compromise relational integrity.
+\end{itemize}
+
+\subsubsection{Physical Implementation}
+
+The final phase consisted in materializing the logical design within a hybrid physical architecture.
+
+\paragraph{PostgreSQL + TimescaleDB (Relational Core and Time-Series Engine)}
+
+Key implementation decisions included:
+
+\begin{itemize}
+    \item \textbf{Creation of a hypertable} on \texttt{airquality\_reading}, with:
+    \begin{itemize}
+        \item Temporal partitioning: monthly
+        \item Secondary spatial partitioning: city
+    \end{itemize}
+
+    \item \textbf{Automated compression} of partitions older than 90 days to reduce storage cost while preserving analytical capabilities.
+
+    \item \textbf{Specialized indexes}:
+    \begin{itemize}
+        \item B-tree indexes for recent-data queries (timestamp, station, pollutant)
+        \item Partial indexes covering the last 30 days
+        \item BRIN indexes for large historical partitions
+    \end{itemize}
+
+    \item \textbf{Materialized views and continuous aggregates} to accelerate real-time dashboards using 15-minute, 1-hour, and 24-hour rollups.
+
+    \item \textbf{Performance validation tools}:  
+    intensive use of \texttt{EXPLAIN}, \texttt{ANALYZE}, and TimescaleDB performance metrics.
+\end{itemize}
+
+\paragraph{MongoDB (Semi-structured Metadata and Enriched Payloads)}
+
+MongoDB was selected to store information with highly variable structure, such as:
+
+\begin{itemize}
+    \item Raw payloads processed after MinIO
+    \item Heterogeneous provider metadata
+    \item Non-tabular data such as \texttt{nodeInfo} or \texttt{deviceProfile}
+\end{itemize}
+
+This design decision ensured that the relational core remained clean, stable, and optimized, while the system retained the flexibility required for evolving data structures.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 
 \subsection{Data Ingestion}
 \label{subsec:method_ingest}
