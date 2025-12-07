@@ -22,13 +22,30 @@ def setup_logging():
     log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
 
     # Configure root logger
-    logging.basicConfig(
-        level=log_level,
-        format=settings.LOG_FORMAT,
-        handlers=[
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
+    # Support a special value 'colorlog' in settings to enable colored output
+    if isinstance(settings.LOG_FORMAT, str) and settings.LOG_FORMAT.lower() == "colorlog":
+        try:
+            import colorlog
+
+            handler = colorlog.StreamHandler()
+            formatter = colorlog.ColoredFormatter(
+                "%(log_color)s%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            )
+            handler.setFormatter(formatter)
+            logging.root.handlers = [handler]
+            logging.root.setLevel(log_level)
+        except Exception:
+            # If colorlog is not available, fallback to a sensible format
+            fallback = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            logging.basicConfig(level=log_level, format=fallback, handlers=[logging.StreamHandler(sys.stdout)])
+    else:
+        logging.basicConfig(
+            level=log_level,
+            format=settings.LOG_FORMAT,
+            handlers=[
+                logging.StreamHandler(sys.stdout)
+            ]
+        )
 
     # Set SQLAlchemy logging to WARNING to reduce noise
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
