@@ -54,7 +54,7 @@ The API will be available at `http://localhost:8000`
 
 ### Interactive API Docs
 Once the server is running, visit:
-- **Swagger UI**: http://localhost:8000/docs - Interactive API documentation
+- **Swagger UI**: http://localhost:8000/api/v1/docs - Interactive API documentation
 - **ReDoc**: http://localhost:8000/redoc - Alternative API documentation view
 
 ---
