@@ -68,10 +68,127 @@ This project has several limitations that affect interpretation and generalizati
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Methodology}
-\label{sec:method_method}
 
-This section details the methods, data flows, and experimental procedures used to design, implement, and validate the system. The methodology is organized by functional component: data ingestion, normalization and storage, query acceleration, API layer, recommendation engine, and performance validation.
+\subsection{Database Design Methodology}
+\label{subsec:method_dbdesign}
+
+The database design for the air-quality monitoring platform followed an iterative, evidence-driven methodology grounded in the hybrid nature of the system, which integrates real-time data ingestion, geospatial storage, and historical analytics. The methodology was developed in three major phases: conceptual modeling, logical modeling, and physical implementation. Each phase was aligned with the functional requirements of the platform, including 10-minute ingestion cycles, optimized queries for citizen-facing dashboards, and hybrid storage in PostgreSQL/TimescaleDB and MongoDB.
+
+\subsubsection{Conceptual Modeling}
+
+In this phase, a conceptual model was constructed to capture the essential elements of the air-quality ecosystem in Bogotá. The schema was derived from three main sources:
+
+\begin{itemize}
+    \item The structures published by external APIs (AQICN, Google Air Quality API, and IQAir).
+    \item Functional requirements for citizen users, technical administrators, researchers, and public-policy managers.
+    \item Operational needs of the system: ingestion, visualization, recommendations, and historical analysis.
+\end{itemize}
+
+The main conceptual entities identified were:
+
+\begin{itemize}
+    \item \textbf{Station}: represents measurement stations, both official and external.
+    \item \textbf{Reading}: stores pollutant observations per station and timestamp.
+    \item \textbf{Pollutant}: defines metadata and AQI conversion parameters.
+    \item \textbf{City}: key entity for future multi-city extension.
+    \item \textbf{User} and \textbf{Preference}: support personalization and alert configuration.
+    \item \textbf{Alert}: mechanism for generating notifications under critical conditions.
+    \item \textbf{RawPayload} (conceptual): represents temporary and unstructured storage in MinIO/MongoDB.
+\end{itemize}
+
+Key conceptual relationships include:
+
+\begin{itemize}
+    \item A station generates multiple readings.
+    \item Readings are associated with a pollutant and a city.
+    \item Users define preferences, which trigger alerts and recommendations.
+\end{itemize}
+
+\subsubsection{Logical Modeling}
+
+In the logical modeling phase, the conceptual schema was transformed into a set of relational tables designed specifically for PostgreSQL and TimescaleDB. The main design decisions were the following:
+
+\begin{itemize}
+    \item \textbf{Unification of all measurements into a single table \texttt{airquality\_reading}} with foreign keys to:
+    \begin{itemize}
+        \item \texttt{station}
+        \item \texttt{pollutant}
+        \item \texttt{city}
+    \end{itemize}
+
+    \item \textbf{Definition of a composite unique key}  
+    \[
+    (\textit{station\_id},\ \textit{pollutant\_id},\ \textit{datetime})
+    \]
+    to prevent duplicated readings from multiple data providers reporting the same station.
+
+    \item \textbf{Normalized reference tables}, including:
+    \begin{itemize}
+        \item \texttt{pollutant} with AQI conversion parameters,
+        \item \texttt{station} with geospatial coordinates and metadata,
+        \item \texttt{provider} for full data traceability.
+    \end{itemize}
+
+    All reference tables were normalized up to Third Normal Form (3NF) 
+    to eliminate redundancy, ensure attribute dependency integrity, 
+    and support efficient indexing.
+
+
+    \item \textbf{User-centered modeling}, with:
+    \begin{itemize}
+        \item \texttt{user}
+        \item \texttt{user\_preference}
+        \item \texttt{user\_alert}
+    \end{itemize}
+    designed to support recommendations, notifications, and segmentation features.
+
+    \item \textbf{Semantic separation of raw data}:  
+    unprocessed or semi-structured payloads are stored in MinIO (files) and MongoDB (documents), ensuring that schema-flexible data does not compromise relational integrity.
+\end{itemize}
+
+\subsubsection{Physical Implementation}
+
+The final phase consisted in materializing the logical design within a hybrid physical architecture.
+
+\paragraph{PostgreSQL + TimescaleDB (Relational Core and Time-Series Engine)}
+
+Key implementation decisions included:
+
+\begin{itemize}
+    \item \textbf{Creation of a hypertable} on \texttt{airquality\_reading}, with:
+    \begin{itemize}
+        \item Temporal partitioning: monthly
+        \item Secondary spatial partitioning: city
+    \end{itemize}
+
+    \item \textbf{Automated compression} of partitions older than 90 days to reduce storage cost while preserving analytical capabilities.
+
+    \item \textbf{Specialized indexes}:
+    \begin{itemize}
+        \item B-tree indexes for recent-data queries (timestamp, station, pollutant)
+        \item Partial indexes covering the last 30 days
+        \item BRIN indexes for large historical partitions
+    \end{itemize}
+
+    \item \textbf{Materialized views and continuous aggregates} to accelerate real-time dashboards using 15-minute, 1-hour, and 24-hour rollups.
+
+    \item \textbf{Performance validation tools}:  
+    intensive use of \texttt{EXPLAIN}, \texttt{ANALYZE}, and TimescaleDB performance metrics.
+\end{itemize}
+
+\paragraph{MongoDB (Semi-structured Metadata and Enriched Payloads)}
+
+MongoDB was selected to store information with highly variable structure, such as:
+
+\begin{itemize}
+    \item Raw payloads processed after MinIO
+    \item Heterogeneous provider metadata
+    \item Non-tabular data such as \texttt{nodeInfo} or \texttt{deviceProfile}
+\end{itemize}
+
+This design decision ensured that the relational core remained clean, stable, and optimized, while the system retained the flexibility required for evolving data structures.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{Data Ingestion}
 \label{subsec:method_ingest}
@@ -79,10 +196,12 @@ This section details the methods, data flows, and experimental procedures used t
 Data is collected by a Python-based ingestion service configured to poll selected external APIs every 10 minutes. Each poll performs the following steps:
 \begin{enumerate}
     \item Retrieve JSON payloads for Bogotá and related stations from AQICN, Google Air Quality API, and IQAir endpoints.
-    \item Persist the raw JSON to MinIO under a versioned key with schema: \texttt{raw-airquality/YYYY/MM/DD/HHMM\_source\_station.json} for auditability and reprocessing.
+    \item Persist the raw JSON to MinIO under a versioned key with schema: \texttt{raw-airquality/YYYY/MM/DD/HHMM\_source\_station.json} for auditability and reprocessing. This raw layer is retained for 7 days, aligning with log-retention requirements and enabling deterministic replay during ingestion failures.
     \item Emit a lightweight validation check (schema presence, timestamp parseable, sensor id) and place invalid payloads into a quarantine bucket for manual inspection.
     \item Forward valid payloads to the normalizer via an in-process call (or message queue in future iterations).
 \end{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{Normalization and Storage}
 \label{subsec:method_normalization}
@@ -92,19 +211,194 @@ The normalizer maps each provider-specific payload to a unified relational schem
     \item Field mapping: provider fields (for example, \texttt{pm25}, \texttt{PM2\_5} or \texttt{pm\_2\_5}) are normalized to the canonical column name \texttt{pm25}.
     \item Unit harmonization: concentrations are converted to standard units (\(\mu\)g/m\(^{3}\)) where necessary.
     \item AQI conversion: when providers publish different AQI scales, the normalizer converts pollutant concentrations into the chosen standard AQI scale (EPA or WHO mappings) to keep recommendations consistent.
-    \item Persistence: insert normalized records into the \texttt{airquality\_reading} hypertable partitioned by month and city (TimescaleDB). Each insert is executed in a short transaction and uses identifiers such as \texttt{station\_id} and \texttt{pollutant\_id} with a uniqueness constraint on (\texttt{station\_id}, \texttt{pollutant\_id}, \texttt{datetime}) to avoid duplicates.
+    \item Persistence: insert normalized records into the \texttt{airquality\_reading} hypertable partitioned by month and city. TimescaleDB’s automatic chunk creation manages long-term partitioning, while compression policies are applied to chunks older than 90 days to reduce storage costs. A uniqueness constraint on (\texttt{station\_id}, \texttt{pollutant\_id}, \texttt{datetime}) prevents duplicate readings.
 \end{itemize}
 
-\subsection{Query Acceleration and Indexing}
-\label{subsec:method_query}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-To support sub-2-second p95 latency targets the system uses multiple optimization techniques:
+\subsection{Indexing and Query Optimization}
+\label{subsec:method_indexing}
+
+To support low-latency analytical queries, real-time dashboards, and high-frequency ingestion cycles, the system implements a combined strategy of advanced indexing, hypertable partitioning, materialized aggregation, and execution-plan validation. This subsection consolidates the indexing design for the most critical queries in the platform and the optimization techniques applied to ensure sub-2-second p95 latency under production workloads.
+
+\subsubsection{Indexing Strategy}
+
+The indexing strategy was derived from the filtering patterns observed across the platform’s core analytical queries: station-based lookups, time-window filtering, pollutant comparisons, and geospatial aggregation. All indexes were validated using \texttt{EXPLAIN} and \texttt{EXPLAIN ANALYZE} to ensure alignment with the PostgreSQL query planner.
+
+\paragraph{1. Query: Recent measurements per station}
+\begin{verbatim}
+SELECT *
+FROM airquality_reading
+WHERE station_id = $1
+  AND datetime >= NOW() - INTERVAL '24 hours';
+\end{verbatim}
+
+\textbf{Index:}
+\begin{verbatim}
+CREATE INDEX idx_reading_station_time
+ON airquality_reading (station_id, datetime DESC);
+\end{verbatim}
+
+\textit{Rationale:}
+Matches the filter order (station → time), enabling index-only scans for dashboards querying recent data.
+
+\paragraph{2. Query: Daily pollutant averages per city}
+\begin{verbatim}
+SELECT city_id, pollutant_id, AVG(aqi_value)
+FROM airquality_reading
+WHERE datetime BETWEEN $1 AND $2
+GROUP BY city_id, pollutant_id;
+\end{verbatim}
+
+\textbf{Index:}
+\begin{verbatim}
+CREATE INDEX idx_reading_city_pollutant_time
+ON airquality_reading (city_id, pollutant_id, datetime);
+\end{verbatim}
+
+\textit{Rationale:}
+Supports selective grouping and aggregation patterns used by dashboards and API endpoints.
+
+\paragraph{3. Query: Time-series trend for one pollutant}
+\begin{verbatim}
+SELECT datetime, aqi_value
+FROM airquality_reading
+WHERE pollutant_id = $1 AND station_id = $2
+ORDER BY datetime;
+\end{verbatim}
+
+\textbf{Index:}
+\begin{verbatim}
+CREATE INDEX idx_reading_pollutant_station_time
+ON airquality_reading (pollutant_id, station_id, datetime);
+\end{verbatim}
+
+\textit{Rationale:}
+Accelerates ordered retrieval and prevents sequential scans on the hypertable.
+
+\paragraph{4. Partial index for recent data}
+\begin{verbatim}
+CREATE INDEX idx_reading_recent
+ON airquality_reading (datetime)
+WHERE datetime >= NOW() - INTERVAL '30 days';
+\end{verbatim}
+
+\textit{Rationale:}
+Reduces index size and improves ingestion throughput while optimizing the most frequent queries.
+
+\paragraph{5. BRIN index for long-term historical data}
+\begin{verbatim}
+CREATE INDEX idx_reading_brin
+ON airquality_reading USING BRIN (datetime);
+\end{verbatim}
+
+\textit{Rationale:}
+BRIN indexing minimizes disk usage and enables efficient scans across multi-year partitions.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{Query Optimization Techniques}
+
+Beyond indexing, the system integrates several additional optimization mechanisms designed for large-scale time-series workloads.
+
+\paragraph{Hypertable Partitioning (TimescaleDB)}
+The \texttt{airquality\_reading} table was partitioned into monthly time chunks with space partitioning by city. This design reduces scan ranges, improves ingestion speed, and aligns with time-bounded analytical patterns.
+
+\paragraph{Materialized Views and Continuous Aggregates}
+To avoid repeated computation of expensive rollups, the system uses:
+
 \begin{itemize}
-    \item Concurrently refreshed materialized views for pre-computed aggregation windows (15-minute, hourly, daily) and for common dashboard queries.
-    \item Composite B-tree indexes on (\texttt{timestamp}, \texttt{station\_id}, \texttt{pollutant\_id}) and partial indexes that cover recent data (for example, the last 30 days).
-    \item BRIN indexes for very large historical partitions; BRIN reduces index size and maintenance overhead for old chunks.
-    \item TimescaleDB continuous aggregates for frequently requested rollups to reduce on-demand computation costs.
+    \item 15-minute continuous aggregates for high-frequency dashboard refresh,
+    \item hourly and daily materialized views for trend analysis,
+    \item automatic backfilling of aggregates for late-arriving AQI data.
 \end{itemize}
+
+These pre-computed structures significantly reduce CPU and I/O load during peak usage.
+
+\paragraph{Query Simplification}
+Analytical queries were rewritten to avoid unnecessary subqueries and to leverage index-friendly structures, including:
+
+\begin{itemize}
+    \item replacing nested subqueries with direct aggregations,
+    \item aligning WHERE clauses with index orderings,
+    \item reducing join depth through pre-aggregation,
+    \item offloading repetitive work into materialized or continuous aggregates.
+\end{itemize}
+
+\paragraph{Optional Caching Layer}
+Frequently requested aggregates (e.g., "current Bogotá AQI", hourly PM2.5 trend) may be cached for 60–120 seconds using Redis. This eliminates redundant database access during high-traffic periods.
+
+\paragraph{Execution Plan Validation}
+All optimizations were validated using:
+
+\begin{itemize}
+    \item \texttt{EXPLAIN} and \texttt{EXPLAIN ANALYZE} to detect sequential scans or misaligned indexes,
+    \item TimescaleDB execution metrics to evaluate chunk-level performance,
+    \item before/after benchmarking of index creation and query rewriting.
+\end{itemize}
+
+This methodology ensured that every index or optimization produced measurable improvements in latency, I/O efficiency, and overall system throughput.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Concurrency Analysis}
+\label{subsec:method_concurrency}
+
+Given the system’s dual nature—high-frequency ingestion of time-series air-quality data and simultaneous analytical workloads—concurrency management becomes a critical aspect of the platform’s methodology. This subsection examines the primary concurrency scenarios, the risks associated with them, and the mitigation strategies adopted to maintain system stability and low-latency performance under load.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{Concurrency Scenarios}
+
+\paragraph{1. Data Ingestion vs. Analytical Queries}
+The ingestion pipeline inserts new measurements every 10 minutes across multiple stations. Meanwhile, analysts and automated dashboards perform read-heavy operations on the most recent data. This creates potential contention on the main hypertable, particularly on hot partitions that receive continuous writes.
+
+\paragraph{2. Concurrent Web Users}
+Multiple end users and dashboards may query pollutant trends, AQI summaries, and forecast endpoints simultaneously. These workloads are predominantly read-heavy, increasing pressure on indexes, cached aggregates, and continuous-aggregate refresh processes.
+
+\paragraph{3. Batch Processes Concurrent With Reads}
+Periodic maintenance tasks—such as archiving old partitions, refreshing materialized views, or performing data-quality checks—may overlap with real-time read workloads. If not properly scheduled, these tasks may hold locks on hypertable chunks or indexes.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{Concurrency Risks}
+
+\begin{itemize}
+    \item \textbf{Table or Chunk Contention:} Frequent inserts on the most recent time partition may collide with analytical queries scanning the same chunk, especially if missing indexes force sequential scans.
+    \item \textbf{Row-Level Locking and Block Escalation:} Although TimescaleDB avoids table-level locks during inserts, exceptional analytical updates or deletes may escalate to page-level locks when processing large batches.
+    \item \textbf{Deadlock Potential:} Concurrent refreshes of continuous aggregates, ingestion operations, and long-running analytical queries may attempt to access metadata tables or chunk indexes in incompatible lock modes.
+    \item \textbf{Maintenance vs. Query Latency Impact:} VACUUM operations, reindexing, or chunk compression may temporarily degrade performance if executed during high-load periods.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{Mitigation Strategies}
+
+\paragraph{1. Index and Query Design to Reduce Lock Duration}
+Well-aligned composite indexes (e.g., \texttt{(station\_id, datetime)}, \texttt{(pollutant\_id, datetime)}) enable index-only scans, reducing lock duration and avoiding heap access. Partial indexes on recent data prevent unnecessary contention with historical partitions.
+
+\paragraph{2. Row-Level Lock Granularity}
+PostgreSQL’s MVCC model isolates readers from writers using row-level versioning, ensuring that analytical queries do not block ingestion inserts. This minimizes read-write conflicts across the system.
+
+\paragraph{3. Strategic Hypertable Partitioning}
+Monthly time partitions and additional space partitioning by city isolate write operations to recent chunks, enabling historical reads to execute concurrently without interference.
+
+\paragraph{4. Transaction Isolation Considerations}
+The system operates primarily under \texttt{READ COMMITTED}, which supports high ingestion throughput without blocking readers. Long-running reports may optionally use \texttt{REPEATABLE READ} to ensure snapshot consistency.
+
+\paragraph{5. Scheduling and Throttling of Maintenance Jobs}
+Maintenance tasks such as continuous aggregate refreshes, VACUUM/ANALYZE, and chunk compression are scheduled during periods of low user activity. TimescaleDB background workers also stagger refresh jobs to minimize lock overlap.
+
+\paragraph{6. Optional Caching Layer}
+Caching frequently requested endpoints (e.g., current AQI per city, hourly pollutant summaries) in Redis reduces query pressure on the hypertable during high concurrency periods, lowering lock contention and CPU load.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{Concurrency Validation}
+
+Concurrency behavior was evaluated through parallel load tests simulating simultaneous ingestion and dashboard queries. Lock wait events were monitored using \texttt{pg\_stat\_activity} and \texttt{pg\_locks}, and execution latency was compared before and after index creation and caching enablement. TimescaleDB telemetry was used to identify chunk-level contention. Results show that the chosen partitioning model, indexing strategy, and read/write separation maintained stable ingestion throughput and sustained sub-2-second p95 API latency under concurrent workloads.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{API Layer and Services}
 \label{subsec:method_api}
@@ -113,7 +407,7 @@ The API layer exposes both REST and GraphQL endpoints. Key design choices:
 \begin{itemize}
     \item Authentication: lightweight token-based authentication for researchers and admin users; public endpoints for citizen dashboards limit per-IP rate to protect upstream APIs and database load.
     \item Endpoints: summary endpoints for current AQI, rolling-window endpoints for time series (GraphQL supports nested queries), and CSV export endpoints for researchers.
-    \item Observability: Prometheus metrics exposed for ingest latency, API response times, materialized view refresh duration, and DB query statistics; Grafana dashboards visualize these metrics.
+    \item Observability: Prometheus metrics exposed for ingest latency, API response times, materialized view refresh duration, and DB query statistics; Grafana dashboards visualize these metrics. Alerts are configured for ingestion delays, 4xx/5xx API error spikes, and anomalies in continuous aggregate refresh times.
 \end{itemize}
 
 \subsection{Recommendation Engine}
@@ -132,9 +426,9 @@ The recommendation engine is rule-based and deterministic. Implementation highli
 
 Planned experiments to validate system properties:
 \begin{itemize}
-    \item \textbf{Dataset ingestion}: ingest three years (2022--2024) of Bogotá historical data into the hypertable and measure storage growth and ingest throughput.
+    \item \textbf{Dataset ingestion}: ingest three years (2022--2024) of Bogotá historical data into the hypertable and measure storage growth, ingest throughput, and compression ratio.
     \item \textbf{Load testing}: use Apache JMeter to simulate up to 1000 concurrent users issuing dashboard and CSV-export requests. Measure p95 latency, throughput, CPU and I/O utilization.
-    \item \textbf{Materialized view refresh tests}: measure refresh duration of key views under varying chunk sizes and concurrency; tune chunk time intervals and refresh schedule based on results.
+    \item \textbf{Materialized view and continuous aggregate testing}: measure refresh duration of key views under varying chunk sizes and concurrency; evaluate the impact of compression policies and backfill behavior on refresh latency.
     \item \textbf{Fault-injection}: emulate API downtime and delayed ingestion to validate replay from MinIO and quarantine/reprocessing procedures.
 \end{itemize}
 
