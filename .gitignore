@@ -374,3 +374,7 @@ src/Workshop_Latex/_temp_corrections/
 src/Project/data_air
 .github/
 .copilot_temp/
+# Frontend: ignore installed dependencies and lockfile
+src/Project/frontend/node_modules/
+src/Project/frontend/package-lock.json
+package-lock.json
