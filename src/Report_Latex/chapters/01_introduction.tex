@@ -1,7 +1,7 @@
 \chapter{Introduction}
 \label{ch:into}
 
-Air quality monitoring has become a critical concern for public health, particularly in rapidly growing urban centers. This report presents the design and implementation of a comprehensive architecture for real-time air quality monitoring and personalized health recommendations, with a specific focus on Bogotá, Colombia.
+Air quality monitoring has become a critical concern for public health, particularly in rapidly growing urban centers. This report presents the design and implementation of a practical architecture for near real-time (periodic) air quality monitoring and personalized health recommendations, with a specific focus on Bogotá, Colombia.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Background}
@@ -11,7 +11,7 @@ Ambient and household air pollution jointly kill an estimated seven to eight mil
 
 While multiple data sources for air quality information exist, including AQICN (minute-level AQI for over 100 countries), Google Air Quality API (500m-resolution indices), and IQAir AirVisual (calibrated sensor networks), these platforms present significant limitations. They provide raw values without personalization, enforce strict quota limits that complicate city-scale analytics, and generally aggregate data hourly with tiered pricing for higher-volume access. Citizens seeking actionable information face the challenge of navigating multiple fragmented sources, understanding technical indicators, and interpreting how air quality conditions specifically affect their health and daily activities.
 
-This project addresses the gap between abundant raw environmental data and the lack of intuitive, rapid, and personalized access to air quality information. By integrating heterogeneous data sources into a unified platform with real-time dashboards, personalized recommendations, and health alerts, the system aims to empower citizens with actionable insights that directly support daily decision-making regarding outdoor activities, health precautions, and protective measures.
+This project addresses the gap between abundant raw environmental data and the lack of intuitive, timely, and personalized access to air quality information. By integrating heterogeneous data sources into a unified platform with near real-time dashboards, personalized recommendations, and health alerts, the system aims to empower citizens with actionable insights that support daily decisions regarding outdoor activities and health precautions.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Problem statement}
@@ -33,19 +33,19 @@ This fragmentation and lack of personalization creates a barrier between valuabl
 \section{Aims and objectives}
 \label{sec:intro_aims_obj}
 
-\textbf{Aim:} The primary aim of this project is to design and implement a centralized, cloud-ready air quality monitoring platform that integrates real-time data from multiple sources and provides personalized, actionable health recommendations to citizens in Bogotá.
+	extbf{Aim:} The primary aim of this project is to design and implement a centralized, practical air quality monitoring platform that integrates periodic data from multiple sources and provides personalized, actionable health recommendations to citizens in Bogotá.
 
 \textbf{Objectives:} To achieve this aim, the following specific objectives were established:
 
 \begin{enumerate}
-    \item Design a scalable database architecture using PostgreSQL with TimescaleDB extensions to efficiently store and query time-series air quality data from multiple sources.
-    \item Implement a data ingestion pipeline that collects data from external APIs (AQICN, Google Air Quality, IQAir) at 10-minute intervals with raw storage in MinIO.
+    \item Design a scalable database architecture using PostgreSQL (with declarative temporal partitioning and materialized views where appropriate) to efficiently store and query time-series air quality data.
+    \item Implement a data ingestion pipeline that collects data from external APIs (AQICN, Google Air Quality, IQAir) at periodic intervals (e.g., 10-minute cycles) and persists normalized records in PostgreSQL; object storage for raw payloads is considered an optional future enhancement.
     \item Develop a normalization process that transforms heterogeneous data formats into a unified schema with monthly partitioning for optimal query performance.
-    \item Implement materialized views with concurrent refresh capabilities to accelerate queries and support sub-2-second response times under high load.
-    \item Design and implement a REST + GraphQL API layer to serve real-time dashboards and support diverse client applications.
-    \item Develop a recommendation engine that translates AQI thresholds and user metadata into personalized health advice and protective product suggestions.
-    \item Validate the system architecture against performance requirements including p95 latencies below 2 seconds under 1000 concurrent users.
-    \item Document the complete system architecture, implementation details, and lessons learned for future scalability and multi-region deployments.
+    \item Use materialized views and targeted refresh strategies to accelerate frequent aggregations and support low-latency dashboards as a design goal.
+    \item Design and implement a REST API layer to serve dashboards and recommendation endpoints; GraphQL is identified as a possible extension for complex client needs.
+    \item Develop a rule-based recommendation engine that maps AQI thresholds and basic user metadata to concise health guidance.
+    \item Define and document a performance validation plan with target latency goals and load scenarios; measurements and tuning are part of the evaluation strategy rather than assumed achievements.
+    \item Document the system architecture, implementation choices, and lessons learned to guide future scalability and multi-region considerations.
 \end{enumerate}
 
 
@@ -59,30 +59,30 @@ The solution adopts a modern, cloud-ready architecture based on PostgreSQL as th
 \subsection{Data Collection and Ingestion}
 \label{sec:intro_ingestion}
 
-A Python-based ingestion service operates on a 10-minute interval cycle, collecting air quality data from three primary external APIs: AQICN, Google Air Quality, and IQAir. Raw payloads are immediately stored in MinIO object storage to preserve original data for audit trails and potential reprocessing. This two-stage approach ensures data durability while allowing the normalization pipeline to operate asynchronously.
+A Python-based ingestion service collects air quality data from primary external APIs (for example: AQICN, Google Air Quality, and IQAir) at periodic intervals (a 10-minute cycle is used in the prototype as an illustrative example). Incoming payloads are normalized and inserted into the relational schema in PostgreSQL using batched operations aligned with temporal partitions. Storing raw payloads in an object store is documented as an optional approach for auditability and reprocessing in future iterations, but it is not a required component of the baseline implementation.
 
 \subsection{Database Architecture and Query Optimization}
 \label{sec:intro_database}
 
-The normalized data is stored in a PostgreSQL database utilizing monthly partitioning strategies to optimize query performance for time-range filters. TimescaleDB hypertables provide automatic time-series optimizations, including compression and continuous aggregates. To achieve the target sub-2-second query latency, the system employs concurrently refreshed materialized views that pre-compute common aggregations and summary statistics. This multi-layered storage strategy balances write throughput for real-time ingestion with read performance for user queries and dashboard rendering.
+The normalized data is stored in PostgreSQL using temporal partitioning (monthly partitions are recommended in the prototype) and a set of targeted indexes and materialized views to accelerate common analytical queries. Time-series extensions and advanced compression strategies are discussed as future enhancements; the baseline focuses on declarative partitioning, careful index selection, and precomputed summaries as practical techniques to balance write throughput and read performance for near real-time dashboards.
 
 \subsection{API Layer and User Services}
 \label{sec:intro_api}
 
-A dual-protocol API layer supports both REST endpoints for simple queries and GraphQL for complex, nested data requirements. This flexibility allows mobile applications, web dashboards, and third-party integrations to efficiently access the data they need. The recommendation engine operates as a separate service that consumes air quality data alongside user profiles (location, activity patterns, health conditions) to generate personalized health advice, protective product suggestions, and cleaner-area navigation guidance during high pollution periods.
+The baseline API layer follows REST principles and exposes endpoints for dashboard rendering and recommendation retrieval. GraphQL is proposed as an extension for clients that require more flexible querying. The recommendation logic is implemented as rule-based routines that combine AQI-derived thresholds with minimal user metadata (location, declared health conditions) to produce concise health guidance. Advanced features such as product recommendations or navigation guidance are documented as future work and are not part of the baseline.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Summary of contributions and achievements}
 \label{sec:intro_sum_results}
 
-This project makes three primary contributions to the field of environmental data systems and public health informatics. First, it demonstrates an end-to-end PostgreSQL-based architecture that successfully unifies three heterogeneous public APIs through a systematic ingestion, normalization, and storage pipeline. The implementation of TimescaleDB hypertables with monthly city-based partitioning provides a practical model for handling large-scale time-series environmental data with efficient query performance.
+This project contributes a practical, reproducible baseline architecture and an accompanying set of engineering decisions for urban air-quality monitoring. The contributions are:
 
-Second, the lightweight recommendation engine bridges the gap between raw environmental metrics and citizen-actionable guidance. By translating technical AQI thresholds and pollutant concentrations into color-coded health advice, protective product suggestions, and cleaner-area navigation, the system addresses user stories that emphasize personalized health support rather than merely data visualization.
+- A documented PostgreSQL-based analytical schema and ingestion pipeline that unifies heterogeneous public APIs into a normalized relational model, including guidance on temporal partitioning, unique constraints and indexes suited for typical analytical queries.
+- A rule-based recommendation approach that maps AQI thresholds to concise, actionable health guidance tailored by minimal user metadata.
+- A pragmatic performance and validation plan that describes how to measure and tune query latency and ingestion throughput using materialized views, targeted indexing, and batching strategies (measurements are part of the evaluation work).
 
-Third, the architecture targets specific performance metrics designed to meet non-functional requirements including sub-2-second query response times at the 95th percentile under 1000 concurrent users. The use of concurrently refreshed materialized views demonstrates how modern database features can be leveraged to achieve real-time responsiveness without sacrificing data accuracy or resorting to complex distributed streaming frameworks.
-
-The initial deployment focuses on three years (2022-2024) of historical Bogotá air quality data, providing a foundation for future expansion to predictive modeling, multi-region deployments, and integration with additional health and environmental data sources.
+The prototype is evaluated on a Bogotá dataset spanning recent years (2022–2024) and is presented as a basis for future extensions such as dedicated object storage for raw payloads, time-series extensions, richer BI/visualization stacks, predictive modeling, and multi-region deployments.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Organization of the report}
