@@ -60,7 +60,7 @@ Native PostgreSQL features relevant to time-series workloads include declarative
 \subsection{TimescaleDB: Time-Series Extension}
 \label{subsec:lit_timescaledb}
 
-TimescaleDB extends PostgreSQL with specialized time-series optimizations while maintaining full SQL compatibility and leveraging PostgreSQL's reliability and ecosystem~\citep{timescale}. The core abstraction is the \textit{hypertable}, which automatically partitions data across multiple chunks based on time intervals while presenting a unified table interface to applications.
+TimescaleDB is a widely used PostgreSQL extension that offers specialized time-series optimizations; it is considered in this review as a possible enhancement for production deployments, but it is not a mandatory component of the baseline prototype. TimescaleDB extends PostgreSQL with features that simplify time-series management while maintaining SQL compatibility and leveraging PostgreSQL's ecosystem~\citep{timescale}. The core abstraction is the \textit{hypertable}, which automatically partitions data across multiple chunks based on time intervals while presenting a unified table interface to applications.
 
 Key features relevant to air quality monitoring include:
 
@@ -76,7 +76,7 @@ TimescaleDB's design philosophy prioritizes PostgreSQL compatibility, ensuring t
 \subsection{Alternative Time-Series Databases}
 \label{subsec:lit_alternatives}
 
-While this project adopts PostgreSQL with TimescaleDB, understanding alternative time-series databases provides context for the decision:
+For the prototype we adopt PostgreSQL as the baseline relational engine; TimescaleDB is discussed as a complementary option for future scaling. Understanding alternative time-series databases provides context for this decision:
 
 \textbf{InfluxDB} specializes exclusively in time-series data with a custom query language (InfluxQL/Flux) and a schema-less tag-value data model~\citep{influxdb}. It excels at high-ingestion-rate scenarios but sacrifices relational capabilities and ACID guarantees, making it less suitable for applications requiring complex joins across relational entities (users, permissions, recommendations).
 
@@ -205,7 +205,7 @@ This literature review establishes the foundation for the air quality monitoring
     
     \item Existing air quality data platforms (AQICN, Google Air Quality API, IQAir) provide valuable data sources but lack integration, personalization, and accessible health guidance, creating the need for a unified platform.
     
-    \item PostgreSQL with TimescaleDB extensions offers an optimal balance of relational integrity, time-series performance, and operational simplicity compared to alternative database architectures, particularly for moderate-scale deployments.
+    \item PostgreSQL provides a strong baseline for relational integrity and analytical workloads; time-series extensions such as TimescaleDB are presented as optional enhancements that can simplify chunk management and continuous aggregates when scaling beyond the prototype.
     
     \item Modern stream processing frameworks (Kafka, Flink, Spark) enable sophisticated real-time analytics but introduce complexity unnecessary for ten-minute ingestion intervals; simpler polling architectures prove sufficient for initial deployment while maintaining upgrade paths to streaming if requirements evolve.
     
@@ -217,3 +217,5 @@ This literature review establishes the foundation for the air quality monitoring
 \end{enumerate}
 
 The following chapter describes how these technologies and patterns integrate into a cohesive system architecture addressing the requirements identified in Chapter~\ref{ch:into}.
+
+The literature above guided specific design choices for Chapter~\ref{ch:method}: we selected a PostgreSQL-centered baseline to preserve ACID semantics and relational modeling for entities (stations, users, recommendations); declarative temporal partitioning and targeted indexes to enable efficient time-bounded queries; materialized views and selective refresh strategies to accelerate common aggregations; a lightweight NoSQL store for user preferences and dashboard configuration (separating small mutable objects from bulk time-series data); a periodic polling ingestion pattern (e.g., 10-minute cycles) as a pragmatic initial approach instead of a full stream-processing pipeline; and rule-based recommendation logic to guarantee explainability and alignment with health guidelines. These choices prioritize reproducibility and operational simplicity while leaving clear upgrade paths (object storage, time-series extensions, streaming frameworks) for future work.
