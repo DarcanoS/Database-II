@@ -1,730 +1,198 @@
-% replace all text with your own text.
-% in this template few examples are mention
+% Methodology chapter aligned with Delivery 3 baseline (long version)
 \chapter{Methodology}
-\label{ch:method} % Label for method chapter
+\label{ch:method}
 
-This chapter describes the objectives, scope, assumptions, limitations and the methods used to design and evaluate the air quality monitoring platform for Bogotá. Where possible, implementation details and parameter choices are drawn from the project workshops and the planned architecture described in earlier chapters.
+This chapter details the methodology used to design the air quality monitoring platform for Bogotá with a focus on the Delivery 3 baseline. The baseline centers on PostgreSQL as the primary data store, periodic ingestion (e.g., every 10 minutes), a normalized schema up to Third Normal Form (3NF), indexing and partitioning strategies for analytical queries, a REST API, and a rule-based recommendation subsystem. Technologies such as TimescaleDB hypertables, MinIO object storage, full NoSQL ingestion pipelines, and GraphQL are considered future work and are not required in the baseline.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Objectives}
 \label{sec:method_objectives}
 
-The primary objective of this project is to design and implement a centralized, cloud-ready air quality monitoring platform that integrates real-time data from multiple sources and provides personalized, actionable health recommendations to citizens in Bogotá. The specific research and engineering objectives are:
+The methodology pursues the following objectives:
 \begin{enumerate}
-    \item Design a scalable time-series database architecture based on PostgreSQL and TimescaleDB that supports monthly partitioning and efficient queries over multi-year datasets.
-    \item Implement a robust data ingestion pipeline that collects heterogeneous data from AQICN, Google Air Quality API, and IQAir at 10-minute intervals and stores raw payloads in MinIO for audit and replay.
-    \item Define a normalization schema and ETL process that harmonizes units, field names and AQI scales into a unified relational schema.
-    \item Implement query acceleration using concurrently refreshed materialized views and appropriate indexing strategies to meet target latency goals (p95 < 2s under 1000 concurrent users).
-    \item Provide an API layer (REST + GraphQL) that serves dashboards, researcher exports (CSV), and programmatic integrations.
-    \item Develop a rule-based recommendation engine that maps AQI categories and user metadata into personalized health advice and product suggestions.
-    \item Validate the system against planned performance tests and document lessons learned for future scaling and predictive extensions.
+  \item Provide a normalized relational schema on PostgreSQL for stations, pollutants, and time-series readings.
+  \item Implement a periodic ingestion pipeline (baseline: 10-minute polling) to validate, normalize, and persist observations reliably.
+  \item Define index and partition strategies that support the platform’s key analytics and dashboard queries with predictable latency.
+  \item Deliver a simple, rule-based recommendation mechanism for alerts and informational guidance.
+  \item Specify a reproducible performance validation plan that can be executed in future iterations (JMeter scenarios, EXPLAIN/ANALYZE checks, and basic monitoring).
 \end{enumerate}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Scope}
 \label{sec:method_scope}
 
-This project focuses on a single-city deployment (Bogotá) with an initial historical dataset covering 2022--2024. The scope includes:
+The scope of this deliverable includes a single-city deployment (Bogotá), ingestion of selected historical and current datasets, and a web-based interface consuming REST endpoints. The baseline focuses on:
 \begin{itemize}
-    \item Collection of air quality observations from external APIs (AQICN, Google Air Quality, IQAir) and local government sources where available.
-    \item Storage of raw JSON payloads in MinIO and normalized records in a PostgreSQL/TimescaleDB hypertable partitioned by month and city.
-    \item Implementation of a recommendation engine based on AQI thresholds and user-provided risk profiles.
-    \item Implementation of an API layer and basic dashboard endpoints for citizens and researchers.
-    \item Performance validation using planned JMeter load tests and Prometheus/Grafana monitoring.
+  \item PostgreSQL as the core datastore with declarative temporal partitioning (by month) for the main readings table.
+  \item A normalized schema (to 3NF) for canonical entities and relationships.
+  \item Indexing and materialized views targeting common analytical and dashboard queries.
+  \item A rule-based alerting and recommendation subsystem based on measured AQI thresholds.
 \end{itemize}
 
-Exclusions (out of scope for the current phase):
-\begin{itemize}
-    \item Real-time high-frequency (sub-minute) ingestion; the current architecture targets 10-minute ingestion intervals.
-    \item Full-scale distributed stream-processing fabrics (Kafka/Flink) are not implemented in the baseline but are described as future extensions.
-    \item Clinical validation of health recommendations with medical professionals (recommendations are based on public guidelines and should not replace medical advice).
-    \item Multi-city production deployment—this is left as future work after Bogotá evaluation.
-\end{itemize}
+Out of scope for the baseline: strict real-time ingestion, production-grade multi-region replication, GraphQL, full object storage for raw payloads, and machine-learning-based recommendations. These are documented as potential enhancements.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Assumptions}
 \label{sec:method_assumptions}
 
-The following assumptions guided the design and evaluation:
+The following assumptions guided the design:
 \begin{itemize}
-    \item External APIs (AQICN, Google, IQAir) provide consistent identifiers for stations and timestamps in UTC or include timezone information that can be normalized.
-    \item Ingestion at 10-minute intervals is sufficient for citizen-oriented recommendations and dashboard responsiveness for the Bogotá use case.
-    \item Historical CSV archives (2022--2024) are representative for initial benchmarking and performance validation.
-    \item Users can supply minimal profile information (location, activity preferences, basic health risk flags) to enable personalization without requiring sensitive medical records.
-    \item The deployment environment will provide at least the planned hardware profile for performance testing (e.g., 4 vCPU, 16 GB RAM for the primary database node).
+  \item Provider payloads expose station identifiers and timestamps that can be normalized to UTC.
+  \item A 10-minute polling interval is representative of provider update cadence and dashboard requirements.
+  \item A modest single-node database host (e.g., 4 vCPU, 16 GB RAM) is available for baseline testing.
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Limitations}
 \label{sec:method_limitations}
 
-This project has several limitations that affect interpretation and generalization of the results:
-\begin{itemize}
-    \item Data availability and API quotas may limit continuous ingestion from third-party providers; historical archives reduce but do not eliminate this constraint.
-    \item The recommendation engine is rule-based and deterministic; it does not incorporate personalized predictive models or machine-learning-driven forecasting in the baseline.
-    \item Sensor calibration and data quality from heterogeneous sources remain a challenge; low-cost sensors may introduce bias and require calibration procedures outside the initial scope.
-    \item The performance targets assume a modest single-node deployment; results may differ on constrained hardware or cloud instances with different I/O characteristics.
-    \item Ethical and clinical validation of health advice is outside the project's scope; recommendations should be treated as informational rather than clinical directives.
-\end{itemize}
+The baseline does not implement strict real-time ingestion, automatic failover, or multi-region replication. Recommendations are informative and not clinically validated. External API quotas and data quality may affect completeness and timeliness of ingested data.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \subsection{Database Design Methodology}
 \label{subsec:method_dbdesign}
 
-The database design for the air-quality monitoring platform followed an iterative, evidence-driven methodology grounded in the hybrid nature of the system, which integrates real-time data ingestion, geospatial storage, and historical analytics. The methodology was developed in three major phases: conceptual modeling, logical modeling, and physical implementation. Each phase was aligned with the functional requirements of the platform, including 10-minute ingestion cycles, optimized queries for citizen-facing dashboards, and hybrid storage in PostgreSQL/TimescaleDB and MongoDB.
+The database design followed an iterative process with conceptual, logical, and physical phases. The primary entities include stations, pollutants, providers, users (for preferences/alerts), and the canonical readings table.
 
 \subsubsection{Conceptual Modeling}
-
-In this phase, a conceptual model was constructed to capture the essential elements of the air-quality ecosystem in Bogotá. The schema was derived from three main sources:
-
-\begin{itemize}
-    \item The structures published by external APIs (AQICN, Google Air Quality API, and IQAir).
-    \item Functional requirements for citizen users, technical administrators, researchers, and public-policy managers.
-    \item Operational needs of the system: ingestion, visualization, recommendations, and historical analysis.
-\end{itemize}
-
-The main conceptual entities identified were:
-
-\begin{itemize}
-    \item \textbf{Station}: represents measurement stations, both official and external.
-    \item \textbf{Reading}: stores pollutant observations per station and timestamp.
-    \item \textbf{Pollutant}: defines metadata and AQI conversion parameters.
-    \item \textbf{City}: key entity for future multi-city extension.
-    \item \textbf{User} and \textbf{Preference}: support personalization and alert configuration.
-    \item \textbf{Alert}: mechanism for generating notifications under critical conditions.
-    \item \textbf{RawPayload} (conceptual): represents temporary and unstructured storage in MinIO/MongoDB.
-\end{itemize}
-
-Key conceptual relationships include:
-
-\begin{itemize}
-    \item A station generates multiple readings.
-    \item Readings are associated with a pollutant and a city.
-    \item Users define preferences, which trigger alerts and recommendations.
-\end{itemize}
+The conceptual model represents real-world concepts: \textbf{Station}, \textbf{Pollutant}, \textbf{Provider}, \textbf{AirQualityReading}, and user-related entities (preferences/alerts). Relationships capture measurements per station and pollutant over time, with provider traceability.
 
 \subsubsection{Logical Modeling}
-
-In the logical modeling phase, the conceptual schema was transformed into a set of relational tables designed specifically for PostgreSQL and TimescaleDB. The main design decisions were the following:
-
+The logical schema targets PostgreSQL and adheres to 3NF where practical:
 \begin{itemize}
-    \item \textbf{Unification of all measurements into a single table \texttt{airquality\_reading}} with foreign keys to:
-    \begin{itemize}
-        \item \texttt{station}
-        \item \texttt{pollutant}
-        \item \texttt{city}
-    \end{itemize}
-
-    \item \textbf{Definition of a composite unique key}  
-    \[
-    (\textit{station\_id},\ \textit{pollutant\_id},\ \textit{datetime})
-    \]
-    to prevent duplicated readings from multiple data providers reporting the same station.
-
-    \item \textbf{Normalized reference tables}, including:
-    \begin{itemize}
-        \item \texttt{pollutant} with AQI conversion parameters,
-        \item \texttt{station} with geospatial coordinates and metadata,
-        \item \texttt{provider} for full data traceability.
-    \end{itemize}
-
-    All reference tables were normalized up to Third Normal Form (3NF) 
-    to eliminate redundancy, ensure attribute dependency integrity, 
-    and support efficient indexing.
-
-
-    \item \textbf{User-centered modeling}, with:
-    \begin{itemize}
-        \item \texttt{user}
-        \item \texttt{user\_preference}
-        \item \texttt{user\_alert}
-    \end{itemize}
-    designed to support recommendations, notifications, and segmentation features.
-
-    \item \textbf{Semantic separation of raw data}:  
-    unprocessed or semi-structured payloads are stored in MinIO (files) and MongoDB (documents), ensuring that schema-flexible data does not compromise relational integrity.
+  \item \textbf{Core readings table:} \texttt{airquality\_reading} with foreign keys to \texttt{station}, \texttt{pollutant}, and \texttt{provider}.
+  \item \textbf{Uniqueness:} a unique constraint on (\texttt{station\_id}, \texttt{pollutant\_id}, \texttt{datetime}) prevents duplicates from multiple sources.
+  \item \textbf{Reference tables:} normalized entities (e.g., \texttt{station}, \texttt{pollutant}, \texttt{provider}) maintain referential integrity and avoid redundancy.
+  \item \textbf{User-related data:} user preferences and dashboard configurations can be stored as JSONB in PostgreSQL or in a lightweight NoSQL store when flexibility is needed.
 \end{itemize}
 
 \subsubsection{Physical Implementation}
-
-The final phase consisted in materializing the logical design within a hybrid physical architecture.
-
-\paragraph{PostgreSQL + TimescaleDB (Relational Core and Time-Series Engine)}
-
-Key implementation decisions included:
-
+The physical design emphasizes predictable query performance and manageable ingestion throughput:
 \begin{itemize}
-    \item \textbf{Creation of a hypertable} on \texttt{airquality\_reading}, with:
-    \begin{itemize}
-        \item Temporal partitioning: monthly
-        \item Secondary spatial partitioning: city
-    \end{itemize}
-
-    \item \textbf{Automated compression} of partitions older than 90 days to reduce storage cost while preserving analytical capabilities.
-
-    \item \textbf{Specialized indexes}:
-    \begin{itemize}
-        \item B-tree indexes for recent-data queries (timestamp, station, pollutant)
-        \item Partial indexes covering the last 30 days
-        \item BRIN indexes for large historical partitions
-    \end{itemize}
-
-    \item \textbf{Materialized views and continuous aggregates} to accelerate real-time dashboards using 15-minute, 1-hour, and 24-hour rollups.
-
-    \item \textbf{Performance validation tools}:  
-    intensive use of \texttt{EXPLAIN}, \texttt{ANALYZE}, and TimescaleDB performance metrics.
+  \item Declarative temporal partitioning (monthly) for \texttt{airquality\_reading} to limit scan ranges and support retention.
+  \item B-tree or BRIN indexes aligned to query patterns (see Section~\ref{subsec:method_indexing}).
+  \item Optional materialized views for common rollups (hourly/daily aggregates) refreshed periodically.
 \end{itemize}
-
-\paragraph{MongoDB (Semi-structured Metadata and Enriched Payloads)}
-
-MongoDB was selected to store information with highly variable structure, such as:
-
-\begin{itemize}
-    \item Raw payloads processed after MinIO
-    \item Heterogeneous provider metadata
-    \item Non-tabular data such as \texttt{nodeInfo} or \texttt{deviceProfile}
-\end{itemize}
-
-This design decision ensured that the relational core remained clean, stable, and optimized, while the system retained the flexibility required for evolving data structures.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \subsection{Data Ingestion}
 \label{subsec:method_ingest}
 
-Data is collected by a Python-based ingestion service configured to poll selected external APIs every 10 minutes. Each poll performs the following steps:
+The ingestion service (Python) performs periodic polling of providers and executes the following steps per cycle:
 \begin{enumerate}
-    \item Retrieve JSON payloads for Bogotá and related stations from AQICN, Google Air Quality API, and IQAir endpoints.
-    \item Persist the raw JSON to MinIO under a versioned key with schema: \texttt{raw-airquality/YYYY/MM/DD/HHMM\_source\_station.json} for auditability and reprocessing. This raw layer is retained for 7 days, aligning with log-retention requirements and enabling deterministic replay during ingestion failures.
-    \item Emit a lightweight validation check (schema presence, timestamp parseable, sensor id) and place invalid payloads into a quarantine bucket for manual inspection.
-    \item Forward valid payloads to the normalizer via an in-process call (or message queue in future iterations).
+  \item Fetch JSON payloads for targeted stations/areas in Bogotá.
+  \item Validate the payloads (schema presence, timestamps parsable), normalize to the canonical schema and UTC.
+  \item Deduplicate and upsert into the partitioned \texttt{airquality\_reading} table using the uniqueness constraint.
+  \item Emit logs and basic metrics for observability. Raw payload persistence to object storage is considered future work.
 \end{enumerate}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \subsection{Normalization and Storage}
 \label{subsec:method_normalization}
 
-The normalizer maps each provider-specific payload to a unified relational schema. Key steps:
+Normalization ensures consistent semantics across sources:
 \begin{itemize}
-    \item Field mapping: provider fields (for example, \texttt{pm25}, \texttt{PM2\_5} or \texttt{pm\_2\_5}) are normalized to the canonical column name \texttt{pm25}.
-    \item Unit harmonization: concentrations are converted to standard units (\(\mu\)g/m\(^{3}\)) where necessary.
-    \item AQI conversion: when providers publish different AQI scales, the normalizer converts pollutant concentrations into the chosen standard AQI scale (EPA or WHO mappings) to keep recommendations consistent.
-    \item Persistence: insert normalized records into the \texttt{airquality\_reading} hypertable partitioned by month and city. TimescaleDB’s automatic chunk creation manages long-term partitioning, while compression policies are applied to chunks older than 90 days to reduce storage costs. A uniqueness constraint on (\texttt{station\_id}, \texttt{pollutant\_id}, \texttt{datetime}) prevents duplicate readings.
+  \item Field mapping from provider-specific names (e.g., \texttt{pm25}, \texttt{PM2\_5}) to canonical columns (e.g., \texttt{pm25}).
+  \item Unit harmonization (e.g., to $\mu$g/m$^{3}$) and value-range validation.
+  \item UTC-timestamp normalization and enforcement of (station, pollutant, datetime) uniqueness during inserts/upserts.
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \subsection{Indexing and Query Optimization}
 \label{subsec:method_indexing}
 
-To support low-latency analytical queries, real-time dashboards, and high-frequency ingestion cycles, the system implements a combined strategy of advanced indexing, hypertable partitioning, materialized aggregation, and execution-plan validation. This subsection consolidates the indexing design for the most critical queries in the platform and the optimization techniques applied to ensure sub-2-second p95 latency under production workloads.
+The indexing strategy derives from common filtering/grouping patterns. All indexes should be validated with \texttt{EXPLAIN} and \texttt{EXPLAIN ANALYZE} on representative data.
 
-\subsubsection{Indexing Strategy}
-
-The indexing strategy was derived from the filtering patterns observed across the platform’s core analytical queries: station-based lookups, time-window filtering, pollutant comparisons, and geospatial aggregation. All indexes were validated using \texttt{EXPLAIN} and \texttt{EXPLAIN ANALYZE} to ensure alignment with the PostgreSQL query planner.
-
-\paragraph{1. Query: Recent measurements per station}
+\paragraph{Recent measurements per station}
 \begin{verbatim}
 SELECT *
 FROM airquality_reading
 WHERE station_id = $1
   AND datetime >= NOW() - INTERVAL '24 hours';
 \end{verbatim}
-
-\textbf{Index:}
+Recommended index:
 \begin{verbatim}
 CREATE INDEX idx_reading_station_time
 ON airquality_reading (station_id, datetime DESC);
 \end{verbatim}
 
-\textit{Rationale:}
-Matches the filter order (station → time), enabling index-only scans for dashboards querying recent data.
-
-\paragraph{2. Query: Daily pollutant averages per city}
+\paragraph{Daily pollutant averages per city}
 \begin{verbatim}
 SELECT city_id, pollutant_id, AVG(aqi_value)
 FROM airquality_reading
 WHERE datetime BETWEEN $1 AND $2
 GROUP BY city_id, pollutant_id;
 \end{verbatim}
-
-\textbf{Index:}
+Recommended index:
 \begin{verbatim}
 CREATE INDEX idx_reading_city_pollutant_time
 ON airquality_reading (city_id, pollutant_id, datetime);
 \end{verbatim}
 
-\textit{Rationale:}
-Supports selective grouping and aggregation patterns used by dashboards and API endpoints.
-
-\paragraph{3. Query: Time-series trend for one pollutant}
+\paragraph{Time-series trend for one pollutant}
 \begin{verbatim}
 SELECT datetime, aqi_value
 FROM airquality_reading
 WHERE pollutant_id = $1 AND station_id = $2
 ORDER BY datetime;
 \end{verbatim}
-
-\textbf{Index:}
+Recommended index:
 \begin{verbatim}
 CREATE INDEX idx_reading_pollutant_station_time
 ON airquality_reading (pollutant_id, station_id, datetime);
 \end{verbatim}
 
-\textit{Rationale:}
-Accelerates ordered retrieval and prevents sequential scans on the hypertable.
-
-\paragraph{4. Partial index for recent data}
+\paragraph{Partial index for recent data}
 \begin{verbatim}
 CREATE INDEX idx_reading_recent
 ON airquality_reading (datetime)
 WHERE datetime >= NOW() - INTERVAL '30 days';
 \end{verbatim}
 
-\textit{Rationale:}
-Reduces index size and improves ingestion throughput while optimizing the most frequent queries.
-
-\paragraph{5. BRIN index for long-term historical data}
+\paragraph{BRIN index for long-term historical scans}
 \begin{verbatim}
 CREATE INDEX idx_reading_brin
 ON airquality_reading USING BRIN (datetime);
 \end{verbatim}
 
-\textit{Rationale:}
-BRIN indexing minimizes disk usage and enables efficient scans across multi-year partitions.
+Beyond indexing, query optimization techniques include:
+\begin{itemize}
+  \item Using declarative partitioning to reduce scan ranges.
+  \item Employing materialized views for expensive rollups with periodic refreshes.
+  \item Simplifying queries to align predicates and sort orders with indexes.
+\end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\subsubsection{Query Optimization Techniques}
-
-Beyond indexing, the system integrates several additional optimization mechanisms designed for large-scale time-series workloads.
-
-\paragraph{Hypertable Partitioning (TimescaleDB)}
-The \texttt{airquality\_reading} table was partitioned into monthly time chunks with space partitioning by city. This design reduces scan ranges, improves ingestion speed, and aligns with time-bounded analytical patterns.
-
-\paragraph{Materialized Views and Continuous Aggregates}
-To avoid repeated computation of expensive rollups, the system uses:
-
-\begin{itemize}
-    \item 15-minute continuous aggregates for high-frequency dashboard refresh,
-    \item hourly and daily materialized views for trend analysis,
-    \item automatic backfilling of aggregates for late-arriving AQI data.
-\end{itemize}
-
-These pre-computed structures significantly reduce CPU and I/O load during peak usage.
-
-\paragraph{Query Simplification}
-Analytical queries were rewritten to avoid unnecessary subqueries and to leverage index-friendly structures, including:
-
-\begin{itemize}
-    \item replacing nested subqueries with direct aggregations,
-    \item aligning WHERE clauses with index orderings,
-    \item reducing join depth through pre-aggregation,
-    \item offloading repetitive work into materialized or continuous aggregates.
-\end{itemize}
-
-\paragraph{Optional Caching Layer}
-Frequently requested aggregates (e.g., "current Bogotá AQI", hourly PM2.5 trend) may be cached for 60–120 seconds using Redis. This eliminates redundant database access during high-traffic periods.
-
-\paragraph{Execution Plan Validation}
-All optimizations were validated using:
-
-\begin{itemize}
-    \item \texttt{EXPLAIN} and \texttt{EXPLAIN ANALYZE} to detect sequential scans or misaligned indexes,
-    \item TimescaleDB execution metrics to evaluate chunk-level performance,
-    \item before/after benchmarking of index creation and query rewriting.
-\end{itemize}
-
-This methodology ensured that every index or optimization produced measurable improvements in latency, I/O efficiency, and overall system throughput.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \subsection{Concurrency Analysis}
 \label{subsec:method_concurrency}
 
-Given the system’s dual nature—high-frequency ingestion of time-series air-quality data and simultaneous analytical workloads—concurrency management becomes a critical aspect of the platform’s methodology. This subsection examines the primary concurrency scenarios, the risks associated with them, and the mitigation strategies adopted to maintain system stability and low-latency performance under load.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\subsubsection{Concurrency Scenarios}
-
-\paragraph{1. Data Ingestion vs. Analytical Queries}
-The ingestion pipeline inserts new measurements every 10 minutes across multiple stations. Meanwhile, analysts and automated dashboards perform read-heavy operations on the most recent data. This creates potential contention on the main hypertable, particularly on hot partitions that receive continuous writes.
-
-\paragraph{2. Concurrent Web Users}
-Multiple end users and dashboards may query pollutant trends, AQI summaries, and forecast endpoints simultaneously. These workloads are predominantly read-heavy, increasing pressure on indexes, cached aggregates, and continuous-aggregate refresh processes.
-
-\paragraph{3. Batch Processes Concurrent With Reads}
-Periodic maintenance tasks—such as archiving old partitions, refreshing materialized views, or performing data-quality checks—may overlap with real-time read workloads. If not properly scheduled, these tasks may hold locks on hypertable chunks or indexes.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\subsubsection{Concurrency Risks}
-
+The system balances periodic writes with read-heavy analytical workloads:
 \begin{itemize}
-    \item \textbf{Table or Chunk Contention:} Frequent inserts on the most recent time partition may collide with analytical queries scanning the same chunk, especially if missing indexes force sequential scans.
-    \item \textbf{Row-Level Locking and Block Escalation:} Although TimescaleDB avoids table-level locks during inserts, exceptional analytical updates or deletes may escalate to page-level locks when processing large batches.
-    \item \textbf{Deadlock Potential:} Concurrent refreshes of continuous aggregates, ingestion operations, and long-running analytical queries may attempt to access metadata tables or chunk indexes in incompatible lock modes.
-    \item \textbf{Maintenance vs. Query Latency Impact:} VACUUM operations, reindexing, or chunk compression may temporarily degrade performance if executed during high-load periods.
+  \item Short ingestion transactions and index-aligned queries reduce lock durations under MVCC.
+  \item Temporal partitioning isolates writes on recent partitions from historical scans.
+  \item Maintenance (VACUUM, ANALYZE, materialized view refresh) should be scheduled during low-traffic windows.
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\subsubsection{Mitigation Strategies}
-
-\paragraph{1. Index and Query Design to Reduce Lock Duration}
-Well-aligned composite indexes (e.g., \texttt{(station\_id, datetime)}, \texttt{(pollutant\_id, datetime)}) enable index-only scans, reducing lock duration and avoiding heap access. Partial indexes on recent data prevent unnecessary contention with historical partitions.
-
-\paragraph{2. Row-Level Lock Granularity}
-PostgreSQL’s MVCC model isolates readers from writers using row-level versioning, ensuring that analytical queries do not block ingestion inserts. This minimizes read-write conflicts across the system.
-
-\paragraph{3. Strategic Hypertable Partitioning}
-Monthly time partitions and additional space partitioning by city isolate write operations to recent chunks, enabling historical reads to execute concurrently without interference.
-
-\paragraph{4. Transaction Isolation Considerations}
-The system operates primarily under \texttt{READ COMMITTED}, which supports high ingestion throughput without blocking readers. Long-running reports may optionally use \texttt{REPEATABLE READ} to ensure snapshot consistency.
-
-\paragraph{5. Scheduling and Throttling of Maintenance Jobs}
-Maintenance tasks such as continuous aggregate refreshes, VACUUM/ANALYZE, and chunk compression are scheduled during periods of low user activity. TimescaleDB background workers also stagger refresh jobs to minimize lock overlap.
-
-\paragraph{6. Optional Caching Layer}
-Caching frequently requested endpoints (e.g., current AQI per city, hourly pollutant summaries) in Redis reduces query pressure on the hypertable during high concurrency periods, lowering lock contention and CPU load.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\subsubsection{Concurrency Validation}
-
-Concurrency behavior was evaluated through parallel load tests simulating simultaneous ingestion and dashboard queries. Lock wait events were monitored using \texttt{pg\_stat\_activity} and \texttt{pg\_locks}, and execution latency was compared before and after index creation and caching enablement. TimescaleDB telemetry was used to identify chunk-level contention. Results show that the chosen partitioning model, indexing strategy, and read/write separation maintained stable ingestion throughput and sustained sub-2-second p95 API latency under concurrent workloads.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \subsection{API Layer and Services}
 \label{subsec:method_api}
 
-The API layer exposes both REST and GraphQL endpoints. Key design choices:
-\begin{itemize}
-    \item Authentication: lightweight token-based authentication for researchers and admin users; public endpoints for citizen dashboards limit per-IP rate to protect upstream APIs and database load.
-    \item Endpoints: summary endpoints for current AQI, rolling-window endpoints for time series (GraphQL supports nested queries), and CSV export endpoints for researchers.
-    \item Observability: Prometheus metrics exposed for ingest latency, API response times, materialized view refresh duration, and DB query statistics; Grafana dashboards visualize these metrics. Alerts are configured for ingestion delays, 4xx/5xx API error spikes, and anomalies in continuous aggregate refresh times.
-\end{itemize}
+The baseline exposes REST endpoints supporting pagination and time-window filters for stations, readings, and aggregates. Authentication/authorization and rate limiting are considered production enhancements.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Recommendation Engine}
-\label{subsec:method_reco}
+\label{subsec:method_recommendation}
 
-The recommendation engine is rule-based and deterministic. Implementation highlights:
-\begin{itemize}
-    \item Input: latest AQI per location, user profile (age bracket, respiratory risk flag, activity preference), and optional device location.
-    \item Rule set: AQI category lookup table (EPA bands) maps to health advice templates. Rules include thresholds for protective product suggestions (for example, recommend N95 when AQI $\geq$ 151 for outdoor exercise).
-    \item Delivery: notifications via email or push; caching layer prevents repeated alerts for unchanged AQI categories within a 3-hour TTL unless user location changes by $>2\,$km.
-    \item Explainability: each recommendation includes the rule identifier and the AQI/pollutant evidence used to derive it to enable user transparency.
-\end{itemize}
+The recommendation subsystem is rule-based. Rules map recent AQI/pollutant thresholds and user preferences (e.g., activity level) to deterministic messages. Rules can be implemented in SQL or application logic and should include identifiers for explainability.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Performance Validation and Experiments}
-\label{subsec:method_experiments}
+\label{subsec:method_performance}
 
-Planned experiments to validate system properties:
-\begin{itemize}
-    \item \textbf{Dataset ingestion}: ingest three years (2022--2024) of Bogotá historical data into the hypertable and measure storage growth, ingest throughput, and compression ratio.
-    \item \textbf{Load testing}: use Apache JMeter to simulate up to 1000 concurrent users issuing dashboard and CSV-export requests. Measure p95 latency, throughput, CPU and I/O utilization.
-    \item \textbf{Materialized view and continuous aggregate testing}: measure refresh duration of key views under varying chunk sizes and concurrency; evaluate the impact of compression policies and backfill behavior on refresh latency.
-    \item \textbf{Fault-injection}: emulate API downtime and delayed ingestion to validate replay from MinIO and quarantine/reprocessing procedures.
-\end{itemize}
+The validation plan includes: ingesting historical data to observe throughput and storage growth; capturing \texttt{EXPLAIN ANALYZE} for representative queries; and optionally running JMeter scenarios to simulate concurrent dashboards. Empirical results are planned for future iterations; no production-scale benchmarks are claimed in this deliverable.
 
-\section{Summary}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Summary of Methodology}
+\label{sec:method_summary}
 
-This methodology chapter documents the concrete steps and design choices used to build an end-to-end air quality monitoring platform for Bogotá. The following chapter details the implementation and experimental results obtained while evaluating the proposed system. Table~\ref{tab:gen_template} describes that, in general, a typical report structure has three main parts: (1) front matter, (2) main text, and (3) end matter. %[\textbf{also notice that the preceding sentence is an example of a numbered list in a text body}]. 
-The structure of the front matter and end matter will remain the same for all the undergraduate final year project report. However, the main text varies as per the project's needs.
-\begin{table}[!ht]
-    \centering
-    \caption{Undergraduate report template structure}
-    \label{tab:gen_template}
-    \begin{tabular}{llll}     
-        \toprule
-        \multirow{7}{3cm}{Frontmatter} 
-        & & Title Page & \\                  
-        & & Abstract &    \\          
-        & & Acknowledgements & \\                            
-        & & Table of Contents &    \\                                
-        & & List of Figures   &    \\                        
-        & & List of Tables    &    \\                
-        & & List of Abbreviations  &    \\                     
-        & &   &    \\                        
-        \multirow{7}{3cm}{Main text}
-        & Chapter 1 & Introduction   &    \\                         
-        & Chapter 2 & Literature Review   &    \\
-        & Chapter 3 & Methodology   &    \\
-        & Chapter 4 & Results    &    \\
-        & Chapter 5 & Discussion and Analysis  &    \\
-        & Chapter 6 & Conclusions and Future Work  &    \\        
-        & Chapter 7 & Refection  &    \\          
-        & &   &    \\                       
-        \multirow{2}{3cm}{End matter}
-        & & References  &    \\   
-        & & Appendices (Optional)  &    \\ 
-        & & Index (Optional)  &    \\ 
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-\subsection{Example of a software/Web development main text structure}
-\label{subsec:se_chpters}
-Notice that the ``methodology'' Chapter of Software/Web development in Table~\ref{tab:soft_eng_temp} takes a standard software engineering paradigm (approach). Alternatively, these suggested sections can be the chapters of their own. Also, notice that ``Chapter 5'' in Table~\ref{tab:soft_eng_temp} is ``Testing and Validation'' which is different from the general report template mentioned in Table~\ref{tab:gen_template}. Check with your supervisor if in doubt.
-\begin{table}[!ht]
-    \centering
-    \caption{Example of a software engineering-type report structure}
-    \label{tab:soft_eng_temp}
-    \begin{tabular}{lll}     
-        \toprule                   
-        Chapter 1 & Introduction   &    \\        
-        Chapter 2 & Literature Review  &    \\                   
-        Chapter 3 & Methodology   &    \\
-        &               & Requirements specifications   \\
-        &               & Analysis   \\
-        &               & Design   \\
-        &               & Implementations   \\
-        Chapter 4 & Testing and Validation  &    \\
-        Chapter 5 & Results and Discussion      &    \\
-        Chapter 6 & Conclusions and Future Work  &    \\        
-        Chapter 7 & Reflection  &    \\                          
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-\subsection{Example of an algorithm analysis main text structure}
-Some project might involve the implementation of a state-of-the-art algorithm and its performance analysis and comparison with other algorithms. In that case, the suggestion in Table~\ref{tab:algo_temp} may suit you the best. 
-\begin{table}[!ht]
-    \centering
-    \caption{Example of an algorithm analysis type report structure}
-    \label{tab:algo_temp}
-    \begin{tabular}{lll}     
-        \toprule                   
-        Chapter 1 & Introduction  &    \\        
-        Chapter 2 & Literature Review  &    \\                
-        Chapter 3 & Methodology   &    \\
-        &               & Algorithms descriptions  \\
-        &               & Implementations   \\
-        &               & Experiments design   \\
-        Chapter 4 & Results       &  \\
-        Chapter 5 & Discussion and Analysis  &    \\
-        Chapter 6 & Conclusion and Future Work  &    \\        
-        Chapter 7 & Reflection  &    \\          
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-\subsection{Example of an application type main text structure}
-If you are applying some algorithms/tools/technologies on some problems/datasets/etc., you may use the methodology section prescribed in Table~\ref{tab:app_temp}.  
-\begin{table}[!ht]
-    \centering
-    \caption{Example of an application type report structure}
-    \label{tab:app_temp}
-    \begin{tabular}{lll}     
-        \toprule                   
-        Chapter 1 & Introduction  &    \\        
-        Chapter 2 & Literature Review  &    \\                
-        Chapter 3 & Methodology   &    \\
-        &               & Problems (tasks) descriptions  \\
-        &               & Algorithms/tools/technologies/etc. descriptions  \\        
-        &               & Implementations   \\
-        &               & Experiments design and setup   \\
-        Chapter 4 & Results       &  \\
-        Chapter 5 & Discussion and Analysis  &    \\
-        Chapter 6 & Conclusion and Future Work  &    \\        
-        Chapter 7 & Reflection  &    \\          
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-\subsection{Example of a science lab-type main text structure}
-If you are doing a science lab experiment type of project, you may use the  methodology section suggested in Table~\ref{tab:lab_temp}. In this kind of project, you may refer to the ``Methodology'' section as ``Materials and Methods.''
-\begin{table}[!ht]
-    \centering
-    \caption{Example of a science lab experiment-type report structure}
-    \label{tab:lab_temp}
-    \begin{tabular}{lll}     
-        \toprule                   
-        Chapter 1 & Introduction  &    \\        
-        Chapter 2 & Literature Review  &    \\                
-        Chapter 3 & Materials and Methods   &    \\
-        &               & Problems (tasks) description  \\
-        &               & Materials \\        
-        &               & Procedures  \\                
-        &               & Implementations   \\
-        &               & Experiment set-up   \\
-        Chapter 4 & Results       &  \\
-        Chapter 5 & Discussion and Analysis  &    \\
-        Chapter 6 & Conclusion and Future Work  &    \\        
-        Chapter 7 & Reflection  &    \\          
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-\subsection{Ethical considerations}
-This section addresses ethical aspects of your project. This may include:
-    informed consent, describing how participants will be informed about the study's purpose, procedures, risks, and benefits. You should detail the process used for obtaining consent and ensuring participants understand their rights.
-
-
-\begin{itemize}
-    \item \textbf{Informed Consent}: If data was collected from participant, detail the process for obtaining consent and ensuring participants understand their rights.
-    
-    \item \textbf{Confidentiality and Privacy}: Explain measures taken to protect participants' data and maintain confidentiality. Discuss how data is stored, who will have access, and how anonymity will be preserved.
-    
-    \item \textbf{Risk Assessment}: Identify potential risks to participants and outline strategies to minimize them. 
-    
-    \item \textbf{Vulnerable Populations}: If applicable, address how you will protect vulnerable groups (e.g., children, elderly, or marginalized communities) involved in your project. 
-    
-    \item \textbf{Research Integrity}: Highlight your commitment to honesty and transparency in research. Discuss how you will avoid plagiarism, fabrication, and falsification of data.
-    
-    \item \textbf{Compliance with Regulations}: Mention relevant ethical guidelines and regulations that your project will adhere to.
-    
-    \item \textbf{Impact on Society}: Reflect on the broader implications of your project. Discuss how the outcomes may affect communities, stakeholders, or the environment, and how you plan to address any potential negative consequences.
-    
-    \item \textbf{Feedback Mechanisms}: Describe how you incorporate feedback from participants and stakeholders to improve the ethical conduct of the project throughout its duration.
-
-\end{itemize}
-
-
-\section{Example of an Equation in \LaTeX}
-Eq.~\ref{eq:eq_example} [note that this is an example of an equation's in-text citation] is an example of an equation in \LaTeX. In Eq.~\eqref{eq:eq_example}, $ s $ is the mean of elements $ x_i \in \mathbf{x} $: 
-
-\begin{equation}
-\label{eq:eq_example} % label used to refer the eq in text
-s = \frac{1}{N} \sum_{i = 1}^{N} x_i. 
-\end{equation}
-
-Have you noticed that all the variables of the equation are defined using the \textbf{in-text} maths command \$.\$, and Eq.~\eqref{eq:eq_example} is treated as a part of the sentence with proper punctuation? Always treat an equation or expression as a part of the sentence. 
-
-
-
-\section{Example of a Figure in \LaTeX}
-Figure~\ref{fig:chart_a} is an example of a figure in \LaTeX. For more details, check the link:
-
-\href{https://en.wikibooks.org/wiki/LaTeX/Floats,_Figures_and_Captions}{wikibooks.org/wiki/LaTeX/Floats,\_Figures\_and\_Captions}.
-
-\noindent
-Keep your artwork (graphics, figures, illustrations) clean and readable. At least 300dpi is a good resolution of a PNG format artwork. However, an SVG format artwork saved as a PDF will produce the best quality graphics. There are numerous tools out there that can produce vector graphics and let you save that as an SVG file and/or as a PDF file. One example of such a tool is the ``Flow algorithm software''. Here is the link for that: \href{http://www.flowgorithm.org/download/}{flowgorithm.org}.
-\begin{figure}[!ht]
-    \centering
-    \includegraphics[scale=0.3]{figures/chart.pdf}
-    \caption{Example figure in \LaTeX.}
-    \label{fig:chart_a}
-\end{figure}
-
-\clearpage %  use command \clearpage when you want section or text to appear in the next page.
-
-\section{Example of an algorithm in \LaTeX}
-Algorithm~\ref{algo:algo_example} is a good example of an algorithm in \LaTeX.  
-\begin{algorithm}
-    \caption{Example caption: sum of all even numbers}
-    \label{algo:algo_example}
-    \begin{algorithmic}[1]
-        \Require{$ \mathbf{x}  = x_1, x_2, \ldots, x_N$}
-        \Ensure{$EvenSum$ (Sum of even numbers in $ \mathbf{x} $)}
-        \Statex
-        \Function{EvenSummation}{$\mathbf{x}$}
-        \State {$EvenSum$ $\gets$ {$0$}}
-        \State {$N$ $\gets$ {$length(\mathbf{x})$}}
-        \For{$i \gets 1$ to $N$}                    
-        \If{$ x_i\mod 2 == 0$}  \Comment Check whether a number is even.
-        \State {$EvenSum$ $\gets$ {$EvenSum + x_i$}}
-        \EndIf
-        \EndFor
-        \State \Return {$EvenSum$}
-        \EndFunction
-    \end{algorithmic}
-\end{algorithm}
- 
-\section{Example of code snippet  in \LaTeX}
-
-Code Listing~\ref{list:python_code_ex} is a good example of including a code snippet in a report. While using code snippets, take care of the following:
-\begin{itemize}
-    \item do not paste your entire code (implementation) or everything you have coded. Add code snippets only. 
-    \item The algorithm shown in Algorithm~\ref{algo:algo_example} is usually preferred over code snippets in a technical/scientific report. 
-    \item Make sure the entire code snippet or algorithm stays on a single page and does not overflow to another page(s).  
-\end{itemize}
-
-Here are three examples of code snippets for three different languages (Python, Java, and CPP) illustrated in Listings~\ref{list:python_code_ex}, \ref{list:java_code_ex}, and \ref{list:cpp_code_ex} respectively.  
-
-\begin{lstlisting}[language=Python, caption={Code snippet in \LaTeX ~and  this is a Python code example}, label=list:python_code_ex]
-import numpy as np
-
-x  = [0, 1, 2, 3, 4, 5] # assign values to an array
-evenSum = evenSummation(x) # call a function
-
-def evenSummation(x):
-    evenSum = 0
-    n = len(x)
-    for i in range(n):
-        if np.mod(x[i],2) == 0: # check if a number is even?
-            evenSum = evenSum + x[i]
-    return evenSum
-\end{lstlisting}
-
-Here we used  the ``\textbackslash clearpage'' command and forced-out the second listing example onto the next page. 
-\clearpage  %
-\begin{lstlisting}[language=Java, caption={Code snippet in \LaTeX ~and  this is a Java code example}, label=list:java_code_ex]
-public class EvenSum{ 
-    public static int evenSummation(int[] x){
-        int evenSum = 0;
-        int n = x.length;
-        for(int i = 0; i < n; i++){
-            if(x[i]%2 == 0){ // check if a number is even?
-                evenSum = evenSum + x[i];
-            }
-        }
-        return evenSum;     
-    }
-    public static void main(String[] args){ 
-        int[] x  = {0, 1, 2, 3, 4, 5}; // assign values to an array
-        int evenSum = evenSummation(x);
-        System.out.println(evenSum);
-    } 
-} 
-\end{lstlisting}
-
-
-\begin{lstlisting}[language=C, caption={Code snippet in \LaTeX ~and  this is a C/C++ code example}, label=list:cpp_code_ex]
-int evenSummation(int x[]){
-    int evenSum = 0;
-    int n = sizeof(x);
-    for(int i = 0; i < n; i++){
-        if(x[i]%2 == 0){ // check if a number is even?
-            evenSum = evenSum + x[i];
-    	}
-    }
-    return evenSum;     
-}
-
-int main(){
-    int x[]  = {0, 1, 2, 3, 4, 5}; // assign values to an array
-    int evenSum = evenSummation(x);
-    cout<<evenSum;
-    return 0;
-}
-\end{lstlisting}
-
-
-
-\section{Example of in-text citation style}
-\subsection{Example of the equations and illustrations placement and reference in the text}
-Make sure whenever you refer to the equations, tables, figures, algorithms,  and listings for the first time, they also appear (placed) somewhere on the same page or in the following page(s). Always make sure to refer to the equations, tables and figures used in the report. Do not leave them without an \textbf{in-text citation}. You can refer to equations, tables and figures more them once.
-
-\subsection{Example of the equations and illustrations style}
-Write \textbf{Eq.} with an uppercase ``Eq`` for an equation before using an equation number with (\textbackslash eqref\{.\}). Use ``Table'' to refer to a table, ``Figure'' to refer to a figure, ``Algorithm'' to refer to an algorithm and ``Listing'' to refer to listings (code snippets). Note that, we do not use the articles ``a,'' ``an,'' and ``the'' before the words Eq., Figure, Table, and Listing, but you may use an article for referring the words figure, table, etc. in general.
-
-For example, the sentence ``A report structure is shown in \textbf{the} Table~\ref{tab:gen_template}'' should be written as ``A report structure is shown \textbf{in} Table~\ref{tab:gen_template}.'' 
-
-\subsection{Tools for In-text Referencing}\label{subsec:reftools}
-You will have noticed that there are linked references within the text to specific items in this document (e.g., equations, figures, tables, chapters, sections, etc.).  This is enabled by a combination of \verb|\label{}| and \verb|\ref{}| commands.  The former is typically ``attached'' to an object/section to be labeled, for instance: \lstinline!\section{My Section}\label{sec:my}!.  This label, \verb|sec:my|, can then be used to create an in-text reference (with link) to the referenced object: \verb|\ref{sec:my}|.
-
-The in-text references to the preceding equation were written as: \lstinline!Eq.~\eqref{eq:eq_example}!.  Here, the author needed to explicitly write the \verb|Eq.| text, include a tilde, \verb|~|, to ensure that the text is not separated from the number at a line break, and used \verb|eqref| to automate placement of parentheses around the number.  Alternatively, we could use the cleverref system to reference this item with \verb|\Cref{eq:eq_example}|, yielding: \Cref{eq:eq_example}.  This makes the textual part (Equation) automatic along with spacing and other formatting.  The capital \verb|C| in that command specifies capitalisation of the word, whereas lowercase for a figure item would, \verb|\cref{fig:chart_a}| would yield a lowercase abbreviated form: \cref{fig:chart_a}.
-
-\section{Summary}
-Write a summary of this chapter.
-
-~\\[5em]
-\noindent
-{\huge\textbf{Note:}} In the case of \textbf{software engineering} project a Chapter ``\textbf{Testing and Validation}'' should precede the ``Results'' chapter. See Section~\ref{subsec:se_chpters} for report organization of such project. 
-
+This chapter presented the Delivery 3 methodology: PostgreSQL-centered design, periodic ingestion, normalized schema (to 3NF), indexes and partitioning aligned to core queries, a REST API, and a rule-based recommendation engine. Future work includes object storage for raw payloads, TimescaleDB features, GraphQL, and production-grade HA/DR.
