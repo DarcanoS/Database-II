@@ -11,8 +11,11 @@ This chapter describes the objectives, scope, assumptions, limitations and the m
 
 The primary objective of this project is to design and implement a centralized, cloud-ready air quality monitoring platform that integrates real-time data from multiple sources and provides personalized, actionable health recommendations to citizens in Bogotá. The specific research and engineering objectives are:
 \begin{enumerate}
-    \item Design a scalable time-series database architecture based on PostgreSQL and TimescaleDB that supports monthly partitioning and efficient queries over multi-year datasets.
-    \item Implement a robust data ingestion pipeline that collects heterogeneous data from AQICN, Google Air Quality API, and IQAir at 10-minute intervals and stores raw payloads in MinIO for audit and replay.
+    \item Design a relational schema in PostgreSQL optimized for periodic ingestion,
+10-minute granularity queries, and efficient filtering by station, pollutant, and date.
+    \item Implement an ingestion workflow that normalizes heterogeneous API responses
+from AQICN, Google Air Quality, and IQAir into a unified structure for storage
+and later analytics.
     \item Define a normalization schema and ETL process that harmonizes units, field names and AQI scales into a unified relational schema.
     \item Implement query acceleration using concurrently refreshed materialized views and appropriate indexing strategies to meet target latency goals (p95 < 2s under 1000 concurrent users).
     \item Provide an API layer (REST + GraphQL) that serves dashboards, researcher exports (CSV), and programmatic integrations.
