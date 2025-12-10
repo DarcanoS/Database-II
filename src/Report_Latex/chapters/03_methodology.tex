@@ -30,7 +30,7 @@ and later analytics.
 This project focuses on a single-city deployment (Bogotá) with an initial historical dataset covering 2022--2024. The scope includes:
 \begin{itemize}
     \item Collection of air quality observations from external APIs (AQICN, Google Air Quality, IQAir) and local government sources where available.
-    \item Storage of raw JSON payloads in MinIO and normalized records in a PostgreSQL/TimescaleDB hypertable partitioned by month and city.
+    \item Store raw API payloads temporarily for validation and log purposes, while saving normalized records in PostgreSQL with indexes optimized for date, station, and pollutant queries.
     \item Implementation of a recommendation engine based on AQI thresholds and user-provided risk profiles.
     \item Implementation of an API layer and basic dashboard endpoints for citizens and researchers.
     \item Performance validation using planned JMeter load tests and Prometheus/Grafana monitoring.
